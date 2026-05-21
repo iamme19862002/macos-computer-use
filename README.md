@@ -6,7 +6,7 @@
 
 > 🖱️ macOS 通用计算机控制 CLI - 零 token 开销的 computer-use 工具
 
-一个轻量级、高效的 macOS 命令行工具，用于自动化控制鼠标、键盘和屏幕截图。专为 AI Agent 和自动化脚本设计，提供类似 [xdotool](https://github.com/jordansissel/xdotool) 的功能，但专为 macOS 优化。
+一个轻量级、高效的 macOS 命令行工具，用于自动化控制鼠标、键盘、屏幕截图、应用管理和 UI 元素操作。专为 AI Agent 和自动化脚本设计，提供类似 [xdotool](https://github.com/jordansissel/xdotool) 的功能，但专为 macOS 优化。
 
 ## ✨ 特性
 
@@ -14,6 +14,9 @@
 - 📸 **屏幕截图** - 支持全屏截图，自动标记光标位置
 - 🖱️ **鼠标控制** - 移动、点击（左/右/中）、双击、拖拽、滚动
 - ⌨️ **键盘控制** - 按键组合、文本输入
+- 📱 **应用管理** - 启动、关闭、激活、隐藏应用
+- 🪟 **窗口管理** - 列出、调整大小、移动、最小化、关闭、聚焦窗口
+- 🔍 **UI 元素定位** - 通过 Accessibility API 查找和点击 UI 元素
 - 🚀 **高性能** - 原生 Swift 实现，低延迟
 - 📦 **易于安装** - 一键安装脚本
 - 🔧 **JSON 输出** - 支持程序化调用
@@ -122,6 +125,84 @@ macos-computer-use key --keys "command+shift+4"
 macos-computer-use type --text "Hello, World!"
 ```
 
+### 应用管理
+
+```bash
+# 启动应用
+macos-computer-use app-launch Safari
+
+# 关闭应用
+macos-computer-use app-quit Safari
+
+# 强制关闭
+macos-computer-use app-quit Safari --force
+
+# 列出运行中的应用
+macos-computer-use app-list
+macos-computer-use app-list --json
+
+# 激活应用（调到前台）
+macos-computer-use app-activate Safari
+
+# 隐藏应用
+macos-computer-use app-hide Safari
+
+# 取消隐藏
+macos-computer-use app-hide Safari --unhide
+```
+
+### 窗口管理
+
+```bash
+# 列出所有窗口
+macos-computer-use window-list
+
+# 只列出屏幕上的窗口
+macos-computer-use window-list --on-screen
+
+# 列出指定 PID 的窗口
+macos-computer-use window-list --pid 1234
+
+# JSON 输出
+macos-computer-use window-list --json
+
+# 调整窗口大小
+macos-computer-use window-resize 12345 --width 800 --height 600
+
+# 移动窗口
+macos-computer-use window-move 12345 -x 100 -y 200
+
+# 最小化窗口
+macos-computer-use window-minimize 12345
+
+# 关闭窗口
+macos-computer-use window-close 12345
+
+# 聚焦窗口
+macos-computer-use window-focus 12345
+```
+
+### UI 元素操作
+
+```bash
+# 查找 UI 元素
+macos-computer-use element-find --role button --app Safari
+macos-computer-use element-find --title "确定" --app WeChat
+macos-computer-use element-find --identifier "submit-btn"
+
+# 点击 UI 元素
+macos-computer-use element-click --role button --title "发送"
+macos-computer-use element-click --identifier "confirm-button" --app Safari
+
+# 获取指定位置的元素信息
+macos-computer-use element-info -x 500 -y 300
+macos-computer-use element-info -x 500 -y 300 --json
+
+# 列出应用的 UI 元素树
+macos-computer-use element-list --app Safari
+macos-computer-use element-list --app Safari --depth 2 --json
+```
+
 ### 支持的按键名称
 
 | 类型 | 按键 |
@@ -138,12 +219,15 @@ macos-computer-use type --text "Hello, World!"
 
 ```
 Sources/macos-computer-use/
-├── main.swift                 # 入口点
+├── main.swift                    # 入口点
 ├── Core/
-│   ├── ScreenshotTool.swift   # 截图功能
-│   ├── MouseController.swift  # 鼠标控制
-│   └── KeyboardController.swift # 键盘控制
-├── Commands/                  # CLI 命令
+│   ├── ScreenshotTool.swift      # 截图功能
+│   ├── MouseController.swift     # 鼠标控制
+│   ├── KeyboardController.swift  # 键盘控制
+│   ├── AppManager.swift          # 应用管理
+│   ├── WindowManager.swift       # 窗口管理
+│   └── AccessibilityManager.swift # UI 元素定位
+├── Commands/                     # CLI 命令
 │   ├── ScreenshotCommand.swift
 │   ├── CursorPositionCommand.swift
 │   ├── MouseMoveCommand.swift
@@ -154,9 +238,24 @@ Sources/macos-computer-use/
 │   ├── DragCommand.swift
 │   ├── ScrollCommand.swift
 │   ├── KeyCommand.swift
-│   └── TypeCommand.swift
+│   ├── TypeCommand.swift
+│   ├── AppLaunchCommand.swift
+│   ├── AppQuitCommand.swift
+│   ├── AppListCommand.swift
+│   ├── AppActivateCommand.swift
+│   ├── AppHideCommand.swift
+│   ├── WindowListCommand.swift
+│   ├── WindowResizeCommand.swift
+│   ├── WindowMoveCommand.swift
+│   ├── WindowMinimizeCommand.swift
+│   ├── WindowCloseCommand.swift
+│   ├── WindowFocusCommand.swift
+│   ├── ElementFindCommand.swift
+│   ├── ElementClickCommand.swift
+│   ├── ElementInfoCommand.swift
+│   └── ElementListCommand.swift
 └── Utils/
-    └── KeyMap.swift           # 键名映射
+    └── KeyMap.swift              # 键名映射
 ```
 
 ### 构建
