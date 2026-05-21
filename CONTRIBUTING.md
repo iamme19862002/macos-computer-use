@@ -26,7 +26,7 @@
 
 1. **Fork 仓库**
    ```bash
-   git clone https://github.com/iamme19862002/macos-computer-use.git
+   git clone https://github.com/yourusername/macos-computer-use.git
    cd macos-computer-use
    ```
 
