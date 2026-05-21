@@ -1,3 +1,12 @@
+//
+//  main.swift
+//  macos-computer-use
+//
+//  Created by iamme19862002 on 2025.
+//  Copyright (c) 2025 iamme19862002. All rights reserved.
+//  Licensed under the MIT License.
+//
+
 import ArgumentParser
 import Foundation
 
