@@ -69,6 +69,11 @@ struct MacOSComputerUse: AsyncParsableCommand {
             ReplayCommand.self,
             // 脚本执行
             RunScriptCommand.self,
+            // OCR
+            OCRCommand.self,
+            // 视觉定位
+            FindImageCommand.self,
+            ClickImageCommand.self,
         ]
     )
 }

@@ -23,6 +23,8 @@
 - 📊 **进程管理** - 列出进程、结束进程
 - 🎬 **录制回放** - 录制操作序列并回放
 - 📜 **脚本执行** - 批量执行 JSON 脚本
+- 🔤 **OCR 识别** - 识别截图中的文字
+- 🎯 **视觉定位** - 基于模板匹配的图像识别定位
 - 🚀 **高性能** - 原生 Swift 实现，低延迟
 - 📦 **易于安装** - 一键安装脚本
 - 🔧 **JSON 输出** - 支持程序化调用
@@ -303,6 +305,58 @@ macos-computer-use run-script --file workflow.json
 ]
 ```
 
+### 截图增强
+
+```bash
+# 截取指定区域
+macos-computer-use screenshot --region "100,200,800,600"
+
+# 截取指定窗口
+macos-computer-use screenshot --window-id 12345
+
+# 截图并标记 UI 元素
+macos-computer-use screenshot --mark-elements
+```
+
+### OCR 文字识别
+
+```bash
+# 识别截图中的文字
+macos-computer-use ocr ~/screenshot.png
+
+# 识别指定区域的文字
+macos-computer-use ocr ~/screenshot.png --region "100,200,300,400"
+
+# JSON 输出
+macos-computer-use ocr ~/screenshot.png --json
+```
+
+### 视觉定位
+
+```bash
+# 在屏幕上查找图片
+macos-computer-use find-image ~/button.png
+
+# 设置匹配阈值
+macos-computer-use find-image ~/button.png --threshold 0.9
+
+# 查找并点击图片
+macos-computer-use click-image ~/button.png
+
+# JSON 输出
+macos-computer-use click-image ~/button.png --json
+```
+```json
+[
+  { "action": "app-launch", "params": { "app": "Safari" } },
+  { "action": "sleep", "params": { "ms": "2000" } },
+  { "action": "mouse-move", "params": { "x": "500", "y": "300" } },
+  { "action": "click", "params": {} },
+  { "action": "type", "params": { "text": "Hello World" } },
+  { "action": "key", "params": { "keys": "return" } }
+]
+```
+
 ### 支持的按键名称
 
 | 类型 | 按键 |
@@ -331,7 +385,9 @@ Sources/macos-computer-use/
 │   ├── ClipboardManager.swift    # 剪贴板操作
 │   ├── SystemInfoManager.swift   # 系统信息
 │   ├── ProcessManager.swift      # 进程管理
-│   └── Recorder.swift            # 录制回放
+│   ├── Recorder.swift            # 录制回放
+│   ├── OCRManager.swift          # OCR 文字识别
+│   └── VisualMatcher.swift       # 视觉定位
 ├── Commands/                     # CLI 命令
 │   ├── ScreenshotCommand.swift
 │   ├── CursorPositionCommand.swift
@@ -372,7 +428,10 @@ Sources/macos-computer-use/
 │   ├── ProcessKillCommand.swift
 │   ├── RecordCommand.swift
 │   ├── ReplayCommand.swift
-│   └── RunScriptCommand.swift
+│   ├── RunScriptCommand.swift
+│   ├── OCRCommand.swift
+│   ├── FindImageCommand.swift
+│   └── ClickImageCommand.swift
 └── Utils/
     ├── KeyMap.swift              # 键名映射
     └── JSONUtils.swift           # JSON 工具

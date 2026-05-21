@@ -24,8 +24,23 @@ struct ScreenshotCommand: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "自定义文件名")
     var filename: String?
 
+    @Option(name: .long, help: "截取指定区域 (格式: x,y,width,height)")
+    var region: String?
+
+    @Option(name: .long, help: "截取指定窗口 ID")
+    var windowId: UInt32?
+
+    @Flag(name: .long, help: "标记 UI 元素")
+    var markElements = false
+
     func run() async throws {
-        let result = ScreenshotTool.capture(outputDir: outputDir, filename: filename)
+        let result = ScreenshotTool.capture(
+            outputDir: outputDir,
+            filename: filename,
+            region: region,
+            windowId: windowId,
+            markElements: markElements
+        )
 
         if json {
             print(result.jsonString)
@@ -36,6 +51,15 @@ struct ScreenshotCommand: AsyncParsableCommand {
                 print("  Size: \(result.sizeBytes / 1024) KB")
                 print("  Dimensions: \(result.imageWidth)x\(result.imageHeight)")
                 print("  Cursor: (\(result.cursorPosition.x), \(result.cursorPosition.y))")
+                if region != nil {
+                    print("  Region: \(region!)")
+                }
+                if windowId != nil {
+                    print("  Window ID: \(windowId!)")
+                }
+                if markElements {
+                    print("  Elements: marked")
+                }
             } else {
                 print("✗ Screenshot failed: \(result.error ?? "Unknown error")")
             }

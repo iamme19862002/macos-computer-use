@@ -178,7 +178,12 @@ struct AppManager {
             let containsName = app.localizedName?.lowercased().contains(lowercased) ?? false
             let containsBundle = app.bundleIdentifier?.lowercased().contains(lowercased) ?? false
             
-            return exactName || exactBundle || containsName || containsBundle
+            // Also try matching without spaces (e.g. "Safari浏览器" matches "safari")
+            let nameNoSpaces = app.localizedName?.lowercased().replacingOccurrences(of: " ", with: "") ?? ""
+            let queryNoSpaces = lowercased.replacingOccurrences(of: " ", with: "")
+            let fuzzyMatch = nameNoSpaces.contains(queryNoSpaces) || queryNoSpaces.contains(nameNoSpaces)
+            
+            return exactName || exactBundle || containsName || containsBundle || fuzzyMatch
         }.sorted { app1, app2 in
             // Sort exact matches first
             let e1 = app1.localizedName?.lowercased() == lowercased
