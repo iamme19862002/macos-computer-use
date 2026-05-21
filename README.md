@@ -32,7 +32,7 @@
 ### 方式一：使用安装脚本（推荐）
 
 ```bash
-git clone https://github.com/yourusername/macos-computer-use.git
+git clone https://github.com/iamme19862002/macos-computer-use.git
 cd macos-computer-use
 ./install.sh
 ```
@@ -40,7 +40,7 @@ cd macos-computer-use
 ### 方式二：手动构建
 
 ```bash
-git clone https://github.com/yourusername/macos-computer-use.git
+git clone https://github.com/iamme19862002/macos-computer-use.git
 cd macos-computer-use
 swift build -c release
 cp .build/release/macos-computer-use /usr/local/bin/
