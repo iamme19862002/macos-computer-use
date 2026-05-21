@@ -160,11 +160,27 @@ struct AccessibilityManager {
     
     private static func findAppElements(named: String) -> [AXUIElement] {
         let workspace = NSWorkspace.shared
+        let lowercased = named.lowercased()
+        
         let apps = workspace.runningApplications.filter { app in
-            let nameMatch = app.localizedName?.lowercased().contains(named.lowercased()) ?? false
-            let bundleMatch = app.bundleIdentifier?.lowercased().contains(named.lowercased()) ?? false
-            return nameMatch || bundleMatch
+            // Skip helper processes
+            let bundle = app.bundleIdentifier ?? ""
+            if bundle.contains(".helper") || bundle.contains(".Helper") {
+                return false
+            }
+            
+            let exactName = app.localizedName?.lowercased() == lowercased
+            let exactBundle = bundle.lowercased() == lowercased
+            let containsName = app.localizedName?.lowercased().contains(lowercased) ?? false
+            let containsBundle = bundle.lowercased().contains(lowercased)
+            
+            return exactName || exactBundle || containsName || containsBundle
+        }.sorted { app1, app2 in
+            let e1 = app1.localizedName?.lowercased() == lowercased
+            let e2 = app2.localizedName?.lowercased() == lowercased
+            return e1 && !e2
         }
+        
         return apps.map { AXUIElementCreateApplication($0.processIdentifier) }
     }
     

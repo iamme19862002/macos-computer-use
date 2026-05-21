@@ -167,10 +167,23 @@ struct AppManager {
     
     static func findRunningApps(named: String) -> [NSRunningApplication] {
         let workspace = NSWorkspace.shared
+        let lowercased = named.lowercased()
+        
         return workspace.runningApplications.filter { app in
-            let nameMatch = app.localizedName?.lowercased().contains(named.lowercased()) ?? false
-            let bundleMatch = app.bundleIdentifier?.lowercased().contains(named.lowercased()) ?? false
-            return nameMatch || bundleMatch
+            // Exact match first
+            let exactName = app.localizedName?.lowercased() == lowercased
+            let exactBundle = app.bundleIdentifier?.lowercased() == lowercased
+            
+            // Then try contains match
+            let containsName = app.localizedName?.lowercased().contains(lowercased) ?? false
+            let containsBundle = app.bundleIdentifier?.lowercased().contains(lowercased) ?? false
+            
+            return exactName || exactBundle || containsName || containsBundle
+        }.sorted { app1, app2 in
+            // Sort exact matches first
+            let e1 = app1.localizedName?.lowercased() == lowercased
+            let e2 = app2.localizedName?.lowercased() == lowercased
+            return e1 && !e2
         }
     }
     

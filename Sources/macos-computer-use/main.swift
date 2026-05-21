@@ -41,6 +41,9 @@ struct MacOSComputerUse: AsyncParsableCommand {
             WindowListCommand.self,
             WindowResizeCommand.self,
             WindowMoveCommand.self,
+            WindowMinimizeCommand.self,
+            WindowCloseCommand.self,
+            WindowFocusCommand.self,
             // UI 元素
             ElementFindCommand.self,
             ElementClickCommand.self,
