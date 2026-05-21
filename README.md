@@ -17,6 +17,12 @@
 - 📱 **应用管理** - 启动、关闭、激活、隐藏应用
 - 🪟 **窗口管理** - 列出、调整大小、移动、最小化、关闭、聚焦窗口
 - 🔍 **UI 元素定位** - 通过 Accessibility API 查找和点击 UI 元素
+- ⏱️ **等待机制** - 等待元素出现、应用启动、指定时间
+- 📋 **剪贴板操作** - 复制、粘贴、获取剪贴板内容
+- 🖥️ **系统信息** - 屏幕、显示器、系统信息查询
+- 📊 **进程管理** - 列出进程、结束进程
+- 🎬 **录制回放** - 录制操作序列并回放
+- 📜 **脚本执行** - 批量执行 JSON 脚本
 - 🚀 **高性能** - 原生 Swift 实现，低延迟
 - 📦 **易于安装** - 一键安装脚本
 - 🔧 **JSON 输出** - 支持程序化调用
@@ -203,6 +209,100 @@ macos-computer-use element-list --app Safari
 macos-computer-use element-list --app Safari --depth 2 --json
 ```
 
+### 等待机制
+
+```bash
+# 等待 UI 元素出现
+macos-computer-use wait-for-element --role button --title "提交" --timeout 10
+
+# 等待应用启动
+macos-computer-use wait-for-app Safari --timeout 15
+
+# 等待指定时间（毫秒）
+macos-computer-use sleep --ms 1000
+```
+
+### 剪贴板操作
+
+```bash
+# 复制文本到剪贴板
+macos-computer-use clipboard-copy "Hello, World!"
+
+# 从剪贴板粘贴
+macos-computer-use clipboard-paste
+
+# 获取剪贴板内容
+macos-computer-use clipboard-get
+macos-computer-use clipboard-get --json
+```
+
+### 系统信息
+
+```bash
+# 获取主屏幕信息
+macos-computer-use screen-info
+macos-computer-use screen-info --json
+
+# 列出所有显示器
+macos-computer-use display-list
+macos-computer-use display-list --json
+
+# 获取系统信息
+macos-computer-use system-info
+macos-computer-use system-info --json
+```
+
+### 进程管理
+
+```bash
+# 列出所有进程
+macos-computer-use process-list
+
+# 按名称过滤进程
+macos-computer-use process-list --filter Safari
+
+# JSON 输出
+macos-computer-use process-list --json
+
+# 结束进程
+macos-computer-use process-kill 12345
+
+# 强制结束进程
+macos-computer-use process-kill 12345 --force
+```
+
+### 录制回放
+
+```bash
+# 录制操作（默认 60 秒）
+macos-computer-use record --output actions.json
+
+# 录制 30 秒
+macos-computer-use record --output actions.json --duration 30
+
+# 回放录制的操作
+macos-computer-use replay --file actions.json
+```
+
+### 脚本执行
+
+```bash
+# 执行 JSON 脚本文件
+macos-computer-use run-script --file workflow.json
+```
+
+脚本文件示例 (`workflow.json`):
+```json
+[
+  { "action": "app-launch", "params": { "app": "Safari" } },
+  { "action": "sleep", "params": { "ms": "2000" } },
+  { "action": "mouse-move", "params": { "x": "500", "y": "300" } },
+  { "action": "click", "params": {} },
+  { "action": "type", "params": { "text": "Hello World" } },
+  { "action": "key", "params": { "keys": "return" } }
+]
+```
+
 ### 支持的按键名称
 
 | 类型 | 按键 |
@@ -226,7 +326,12 @@ Sources/macos-computer-use/
 │   ├── KeyboardController.swift  # 键盘控制
 │   ├── AppManager.swift          # 应用管理
 │   ├── WindowManager.swift       # 窗口管理
-│   └── AccessibilityManager.swift # UI 元素定位
+│   ├── AccessibilityManager.swift # UI 元素定位
+│   ├── WaitManager.swift         # 等待机制
+│   ├── ClipboardManager.swift    # 剪贴板操作
+│   ├── SystemInfoManager.swift   # 系统信息
+│   ├── ProcessManager.swift      # 进程管理
+│   └── Recorder.swift            # 录制回放
 ├── Commands/                     # CLI 命令
 │   ├── ScreenshotCommand.swift
 │   ├── CursorPositionCommand.swift
@@ -253,9 +358,24 @@ Sources/macos-computer-use/
 │   ├── ElementFindCommand.swift
 │   ├── ElementClickCommand.swift
 │   ├── ElementInfoCommand.swift
-│   └── ElementListCommand.swift
+│   ├── ElementListCommand.swift
+│   ├── WaitForElementCommand.swift
+│   ├── WaitForAppCommand.swift
+│   ├── SleepCommand.swift
+│   ├── ClipboardCopyCommand.swift
+│   ├── ClipboardPasteCommand.swift
+│   ├── ClipboardGetCommand.swift
+│   ├── ScreenInfoCommand.swift
+│   ├── DisplayListCommand.swift
+│   ├── SystemInfoCommand.swift
+│   ├── ProcessListCommand.swift
+│   ├── ProcessKillCommand.swift
+│   ├── RecordCommand.swift
+│   ├── ReplayCommand.swift
+│   └── RunScriptCommand.swift
 └── Utils/
-    └── KeyMap.swift              # 键名映射
+    ├── KeyMap.swift              # 键名映射
+    └── JSONUtils.swift           # JSON 工具
 ```
 
 ### 构建
