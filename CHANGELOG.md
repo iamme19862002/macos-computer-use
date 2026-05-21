@@ -7,7 +7,7 @@
 
 ## [Unreleased]
 
-## [1.0.0] - 2025-05-21
+## [1.0.0] - 2026-05-21
 
 ### Added
 - 初始版本发布
@@ -31,5 +31,5 @@
 - 基于 CoreGraphics 框架实现底层控制
 - 采用多策略回退机制确保截图可靠性
 
-[Unreleased]: https://github.com/iamme19862002/macos-computer-use/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/iamme19862002/macos-computer-use/releases/tag/v1.0.0
+[Unreleased]: ../../compare/v1.0.0...HEAD
+[1.0.0]: ../../releases/tag/v1.0.0

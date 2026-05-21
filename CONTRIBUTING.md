@@ -11,7 +11,7 @@
 
 ### 报告问题
 
-如果你发现了 bug 或有改进建议，请通过 [GitHub Issues](https://github.com/iamme19862002/macos-computer-use/issues) 提交。
+如果你发现了 bug 或有改进建议，请通过 [GitHub Issues](../../issues) 提交。
 
 提交问题时，请尽可能提供以下信息：
 
@@ -26,7 +26,7 @@
 
 1. **Fork 仓库**
    ```bash
-   git clone https://github.com/iamme19862002/macos-computer-use.git
+   git clone https://github.com/yourusername/macos-computer-use.git
    cd macos-computer-use
    ```
 
@@ -94,8 +94,8 @@
 //  文件名.swift
 //  macos-computer-use
 //
-//  Created by 作者名 on 年份.
-//  Copyright (c) 年份 作者名. All rights reserved.
+//  Created by macos-computer-use authors on 2026.
+//  Copyright (c) 2026 macos-computer-use authors. All rights reserved.
 //  Licensed under the MIT License.
 //
 ```
@@ -170,7 +170,7 @@ cp .build/release/macos-computer-use /usr/local/bin/
 如果你有任何问题，可以通过以下方式获取帮助：
 
 - 查看 [README.md](README.md)
-- 搜索 [GitHub Issues](https://github.com/iamme19862002/macos-computer-use/issues)
+- 搜索 [GitHub Issues](../../issues)
 - 创建新的 Issue
 
 ## 许可证
