@@ -15,9 +15,11 @@ struct MacOSComputerUse: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "macos-computer-use",
         abstract: "macOS 通用计算机控制 CLI - 零 token 开销的 computer-use 工具",
-        version: "1.0.0",
+        version: "2.0.0",
         subcommands: [
+            // 截图
             ScreenshotCommand.self,
+            // 鼠标
             CursorPositionCommand.self,
             MouseMoveCommand.self,
             LeftClickCommand.self,
@@ -26,8 +28,24 @@ struct MacOSComputerUse: AsyncParsableCommand {
             DoubleClickCommand.self,
             DragCommand.self,
             ScrollCommand.self,
+            // 键盘
             KeyCommand.self,
             TypeCommand.self,
+            // 应用管理
+            AppLaunchCommand.self,
+            AppQuitCommand.self,
+            AppListCommand.self,
+            AppActivateCommand.self,
+            AppHideCommand.self,
+            // 窗口管理
+            WindowListCommand.self,
+            WindowResizeCommand.self,
+            WindowMoveCommand.self,
+            // UI 元素
+            ElementFindCommand.self,
+            ElementClickCommand.self,
+            ElementInfoCommand.self,
+            ElementListCommand.self,
         ]
     )
 }
