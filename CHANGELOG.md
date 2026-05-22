@@ -7,6 +7,30 @@
 
 ## [未发布]
 
+### 新增
+
+#### 命令
+- `cursor-position` - 获取当前鼠标光标位置
+- `screenshot-diff` - 对比两张截图的像素级差异，支持差异图输出
+- `pixel-color` - 读取指定坐标的像素颜色值（HEX/RGBA）
+- `text-select` - 选中文本或获取当前已选文本
+- `menu-click` - 通过系统菜单栏操作应用菜单（支持多级菜单）
+- `scroll-to-element` - 滚动页面直到指定元素可见
+- `notify` - 发送 macOS 系统通知
+
+### 文档
+- 命令参考手册补充 7 个缺失命令文档，命令速查表从 24 条扩展至 36 条
+- 智能体实战指南新增 3 个实战场景（UI 回归测试、文本编辑自动化、长页面内容抓取）
+- 智能体实战指南 Python 工具类补充 20+ 缺失方法，命令覆盖率达 94%
+- 智能体实战指南新增 15 条调试技巧和命令覆盖统计表
+- README 优化为按功能模块分组的特性列表，新增文档链接表格
+- 新增 CODE_OF_CONDUCT.md 行为准则
+- 新增 SECURITY.md 安全政策
+
+### 测试
+- 新增完整单元测试套件（10 个测试套件，40+ 测试用例）
+- 测试覆盖 KeyMap、KeyboardController、CommandResult、AnyCodable、FileSystem、TestCommand、ExitStatus、JSONUtils、Sleep、Integration
+
 ## [3.2.0] - 2026-05-22
 
 ### 新增
