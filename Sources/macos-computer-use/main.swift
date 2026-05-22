@@ -15,10 +15,11 @@ struct MacOSComputerUse: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "macos-computer-use",
         abstract: "macOS 通用计算机控制 CLI - 零 token 开销的 computer-use 工具",
-        version: "3.2.0",
+        version: "3.3.0",
         subcommands: [
             // 截图
             ScreenshotCommand.self,
+            ScreenshotDiffCommand.self,
             // 鼠标
             CursorPositionCommand.self,
             MouseMoveCommand.self,
@@ -56,6 +57,7 @@ struct MacOSComputerUse: AsyncParsableCommand {
             ElementInfoCommand.self,
             ElementListCommand.self,
             FocusedElementCommand.self,
+            ScrollToElementCommand.self,
             // 等待机制
             WaitForElementCommand.self,
             WaitForAppCommand.self,
@@ -92,6 +94,14 @@ struct MacOSComputerUse: AsyncParsableCommand {
             // 视觉定位
             FindImageCommand.self,
             ClickImageCommand.self,
+            // 像素颜色
+            PixelColorCommand.self,
+            // 文本选择
+            TextSelectCommand.self,
+            // 菜单操作
+            MenuClickCommand.self,
+            // 通知
+            NotifyCommand.self,
             // 文件系统
             FileReadCommand.self,
             FileWriteCommand.self,
@@ -111,6 +121,8 @@ struct MacOSComputerUse: AsyncParsableCommand {
             // 文件对话框
             DialogOpenCommand.self,
             DialogSaveCommand.self,
+            // MCP Server
+            ServeCommand.self,
         ]
     )
 }
