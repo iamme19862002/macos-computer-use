@@ -152,12 +152,23 @@ class MacOSComputerUse:
             cmd += f" --x {x} --y {y}"
         return self._execute(cmd)
 
+    def middle_click(self, x: Optional[int] = None, y: Optional[int] = None) -> Dict[str, Any]:
+        """中键点击"""
+        cmd = "middle-click"
+        if x is not None and y is not None:
+            cmd += f" --x {x} --y {y}"
+        return self._execute(cmd)
+
     def double_click(self, x: Optional[int] = None, y: Optional[int] = None) -> Dict[str, Any]:
         """双击"""
         cmd = "double-click"
         if x is not None and y is not None:
             cmd += f" --x {x} --y {y}"
         return self._execute(cmd)
+
+    def mouse_hover(self, x: int, y: int) -> Dict[str, Any]:
+        """鼠标悬停"""
+        return self._execute(f"mouse-hover --x {x} --y {y}")
 
     def drag(self, from_x: int, from_y: int, to_x: int, to_y: int) -> Dict[str, Any]:
         """拖拽"""
@@ -179,6 +190,10 @@ class MacOSComputerUse:
     def hotkey(self, keys: str) -> Dict[str, Any]:
         """按下快捷键"""
         return self._execute(f"hotkey --keys '{keys}'")
+
+    def key_sequence(self, keys: str) -> Dict[str, Any]:
+        """按键序列"""
+        return self._execute(f"key-sequence --keys '{keys}'")
 
     def type_text(self, text: str, app: Optional[str] = None, target: Optional[str] = None) -> Dict[str, Any]:
         """输入文本"""
@@ -211,6 +226,10 @@ class MacOSComputerUse:
         """激活应用"""
         return self._execute(f"app-activate --app '{app_name}'")
 
+    def app_hide(self, app_name: str) -> Dict[str, Any]:
+        """隐藏应用"""
+        return self._execute(f"app-hide --app '{app_name}'")
+
     def frontmost_app(self) -> Dict[str, Any]:
         """获取当前前台应用"""
         return self._execute("frontmost-app")
@@ -224,6 +243,30 @@ class MacOSComputerUse:
             cmd += f" --app '{app}'"
         result = self._execute(cmd)
         return result if isinstance(result, list) else []
+
+    def window_resize(self, app: str, width: int, height: int) -> Dict[str, Any]:
+        """调整窗口大小"""
+        return self._execute(f"window-resize --app '{app}' --width {width} --height {height}")
+
+    def window_move(self, app: str, x: int, y: int) -> Dict[str, Any]:
+        """移动窗口"""
+        return self._execute(f"window-move --app '{app}' --x {x} --y {y}")
+
+    def window_minimize(self, app: str) -> Dict[str, Any]:
+        """最小化窗口"""
+        return self._execute(f"window-minimize --app '{app}'")
+
+    def window_maximize(self, app: str) -> Dict[str, Any]:
+        """最大化窗口"""
+        return self._execute(f"window-maximize --app '{app}'")
+
+    def window_close(self, app: str) -> Dict[str, Any]:
+        """关闭窗口"""
+        return self._execute(f"window-close --app '{app}'")
+
+    def window_focus(self, app: str) -> Dict[str, Any]:
+        """聚焦窗口"""
+        return self._execute(f"window-focus --app '{app}'")
 
     # ==================== UI 元素 ====================
 
@@ -250,6 +293,18 @@ class MacOSComputerUse:
     def element_click(self, app: str, name: str) -> Dict[str, Any]:
         """点击 UI 元素"""
         return self._execute(f"element-click --app '{app}' --name '{name}'")
+
+    def element_info(self, app: str, name: str) -> Dict[str, Any]:
+        """获取元素信息"""
+        return self._execute(f"element-info --app '{app}' --name '{name}'")
+
+    def element_list(self, app: str, type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """列出所有元素"""
+        cmd = f"element-list --app '{app}'"
+        if type:
+            cmd += f" --type '{type}'"
+        result = self._execute(cmd)
+        return result if isinstance(result, list) else []
 
     def focused_element(self) -> Dict[str, Any]:
         """获取当前焦点元素"""
@@ -308,6 +363,22 @@ class MacOSComputerUse:
         """断言文本存在"""
         try:
             result = self._execute(f"assert-text-exists --app '{app}' --text '{text}' --timeout {timeout}")
+            return result.get("success", False)
+        except CommandExecutionError:
+            return False
+
+    def assert_element_property(self, app: str, name: str, property: str, value: str, timeout: float = 5.0) -> bool:
+        """断言元素属性"""
+        try:
+            result = self._execute(f"assert-element-property --app '{app}' --name '{name}' --property '{property}' --value '{value}' --timeout {timeout}")
+            return result.get("success", False)
+        except CommandExecutionError:
+            return False
+
+    def assert_clipboard(self, expected: str, timeout: float = 5.0) -> bool:
+        """断言剪贴板内容"""
+        try:
+            result = self._execute(f"assert-clipboard --expected '{expected}' --timeout {timeout}")
             return result.get("success", False)
         except CommandExecutionError:
             return False
@@ -475,9 +546,82 @@ class MacOSComputerUse:
         """获取屏幕信息"""
         return self._execute("screen-info")
 
+    def display_list(self) -> List[Dict[str, Any]]:
+        """列出显示器"""
+        result = self._execute("display-list")
+        return result if isinstance(result, list) else []
+
     def system_info(self) -> Dict[str, Any]:
         """获取系统信息"""
         return self._execute("system-info")
+
+    # ==================== 录制回放 ====================
+
+    def record(self, output: str) -> Dict[str, Any]:
+        """开始录制"""
+        return self._execute(f"record --output '{output}'")
+
+    def replay(self, input_file: str) -> Dict[str, Any]:
+        """回放录制"""
+        return self._execute(f"replay --input '{input_file}'")
+
+    # ==================== OCR 与视觉定位 ====================
+
+    def ocr(self, app: Optional[str] = None, image: Optional[str] = None) -> Dict[str, Any]:
+        """OCR 识别"""
+        cmd = "ocr"
+        if app:
+            cmd += f" --app '{app}'"
+        if image:
+            cmd += f" --image '{image}'"
+        return self._execute(cmd)
+
+    def find_image(self, template: str, threshold: float = 0.8) -> Dict[str, Any]:
+        """查找图片"""
+        return self._execute(f"find-image --template '{template}' --threshold {threshold}")
+
+    def click_image(self, template: str, threshold: float = 0.8) -> Dict[str, Any]:
+        """点击图片"""
+        return self._execute(f"click-image --template '{template}' --threshold {threshold}")
+
+    # ==================== 文件对话框 ====================
+
+    def dialog_open(self, app: str, path: Optional[str] = None) -> Dict[str, Any]:
+        """触发打开文件对话框"""
+        cmd = f"dialog-open --app '{app}'"
+        if path:
+            cmd += f" --path '{path}'"
+        return self._execute(cmd)
+
+    def dialog_save(self, app: str, filename: Optional[str] = None) -> Dict[str, Any]:
+        """触发保存文件对话框"""
+        cmd = f"dialog-save --app '{app}'"
+        if filename:
+            cmd += f" --filename '{filename}'"
+        return self._execute(cmd)
+
+    # ==================== 测试报告 ====================
+
+    def test_start(self, name: str, test_id: Optional[str] = None) -> Dict[str, Any]:
+        """开始测试"""
+        cmd = f"test-start --name '{name}'"
+        if test_id:
+            cmd += f" --id '{test_id}'"
+        return self._execute(cmd)
+
+    def test_end(self, result: str, reason: Optional[str] = None) -> Dict[str, Any]:
+        """结束测试"""
+        cmd = f"test-end --result '{result}'"
+        if reason:
+            cmd += f" --reason '{reason}'"
+        return self._execute(cmd)
+
+    def step(self, name: str, description: Optional[str] = None) -> Dict[str, Any]:
+        """记录测试步骤"""
+        cmd = f"step --name '{name}'"
+        if description:
+            cmd += f" --description '{description}'"
+        return self._execute(cmd)
 
     # ==================== 进程管理 ====================
 

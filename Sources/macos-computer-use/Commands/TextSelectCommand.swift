@@ -19,8 +19,8 @@ struct TextSelectCommand: ParsableCommand {
     @Option(name: .long, help: "要选择的文本内容（不指定则获取当前选中文本）")
     var text: String?
 
-    @Option(name: .long, help: "全选模式（command+a）")
-    var all: Bool = false
+    @Flag(name: .long, help: "全选模式（command+a）")
+    var all = false
 
     @Flag(name: .shortAndLong, help: "JSON 输出")
     var json = false
