@@ -30,6 +30,8 @@ struct MacOSComputerUse: AsyncParsableCommand {
             ScrollCommand.self,
             // 键盘
             KeyCommand.self,
+            HotkeyCommand.self,
+            KeySequenceCommand.self,
             TypeCommand.self,
             // 应用管理
             AppLaunchCommand.self,
@@ -53,6 +55,13 @@ struct MacOSComputerUse: AsyncParsableCommand {
             WaitForElementCommand.self,
             WaitForAppCommand.self,
             SleepCommand.self,
+            // 断言
+            AssertElementExistsCommand.self,
+            AssertTextExistsCommand.self,
+            AssertElementPropertyCommand.self,
+            AssertClipboardCommand.self,
+            // 重试
+            RetryCommand.self,
             // 剪贴板
             ClipboardCopyCommand.self,
             ClipboardPasteCommand.self,
