@@ -19,5 +19,15 @@ let package = Package(
                 .unsafeFlags(["-parse-as-library"])
             ]
         ),
+        .testTarget(
+            name: "macos-computer-useTests",
+            dependencies: [
+                "macos-computer-use",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            ],
+            swiftSettings: [
+                .unsafeFlags(["-parse-as-library"])
+            ]
+        ),
     ]
 )
