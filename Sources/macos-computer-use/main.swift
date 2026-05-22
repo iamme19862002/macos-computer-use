@@ -121,6 +121,8 @@ struct MacOSComputerUse: AsyncParsableCommand {
             // 文件对话框
             DialogOpenCommand.self,
             DialogSaveCommand.self,
+            // MCP Server
+            ServeCommand.self,
         ]
     )
 }
