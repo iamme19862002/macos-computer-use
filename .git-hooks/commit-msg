@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # Git commit-msg hook for Conventional Commits validation
+# Supports both English and Chinese commit messages
 # Install: git config core.hooksPath .git-hooks
 #
 
@@ -25,47 +26,47 @@ fi
 SUBJECT=$(echo "$COMMIT_MSG" | head -n 1)
 
 # Conventional Commits regex pattern
+# Supports both English and Chinese
 # Format: type(scope): subject
 # or: type: subject
 # Supports BREAKING CHANGE marker
-CC_PATTERN='^(feat|fix|docs|style|refactor|perf|test|chore|ci|revert|build)(\([a-zA-Z0-9_-]+\))?!?: .{1,50}$'
+CC_PATTERN='^(feat|fix|docs|style|refactor|perf|test|chore|ci|revert|build)(\([a-zA-Z0-9_\-\u4e00-\u9fa5]+\))?!?: .{1,100}$'
 
 # Types description for error messages
 TYPES="feat, fix, docs, style, refactor, perf, test, chore, ci, revert, build"
 
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  Conventional Commits Validation${NC}"
+echo -e "${BLUE}  Conventional Commits 验证${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
 # Validate subject line format
 if ! echo "$SUBJECT" | grep -qE "$CC_PATTERN"; then
-    echo -e "${RED}✗ Commit message validation failed!${NC}"
+    echo -e "${RED}✗ 提交信息验证失败！${NC}"
     echo ""
-    echo -e "${YELLOW}Your commit message:${NC}"
+    echo -e "${YELLOW}你的提交信息：${NC}"
     echo "  $SUBJECT"
     echo ""
-    echo -e "${YELLOW}Expected format:${NC}"
-    echo "  <type>(<scope>): <subject>"
+    echo -e "${YELLOW}期望格式：${NC}"
+    echo "  <类型>(<范围>): <描述>"
     echo ""
-    echo -e "${YELLOW}Valid types:${NC}"
+    echo -e "${YELLOW}有效类型：${NC}"
     echo "  $TYPES"
     echo ""
-    echo -e "${YELLOW}Examples:${NC}"
-    echo "  feat(api): add user authentication"
-    echo "  fix(ui): resolve button alignment issue"
-    echo "  docs(readme): update installation guide"
-    echo "  chore(deps): update dependency versions"
-    echo "  refactor(core): simplify error handling"
+    echo -e "${YELLOW}示例：${NC}"
+    echo "  feat(api): 添加用户认证功能"
+    echo "  fix(ui): 修复按钮对齐问题"
+    echo "  docs(readme): 更新安装指南"
+    echo "  chore(deps): 更新依赖版本"
+    echo "  refactor(core): 简化错误处理"
     echo ""
-    echo -e "${YELLOW}Rules:${NC}"
-    echo "  • Type must be one of the valid types listed above"
-    echo "  • Scope is optional but recommended (lowercase, alphanumeric, hyphen, underscore)"
-    echo "  • Subject must start with lowercase letter"
-    echo "  • Subject should not exceed 50 characters"
-    echo "  • Use imperative mood (e.g., 'add' not 'added')"
-    echo "  • Do not end subject with a period"
+    echo -e "${YELLOW}规则：${NC}"
+    echo "  • 类型必须是上面列出的有效类型之一"
+    echo "  • 范围是可选的（小写、字母数字、连字符、下划线）"
+    echo "  • 描述不超过 100 个字符"
+    echo "  • 使用祈使语气（例如"添加"而不是"添加了"）"
+    echo "  • 描述末尾不要加句号"
     echo ""
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
@@ -77,14 +78,14 @@ TYPE=$(echo "$SUBJECT" | sed -E 's/^(\w+)(\(.+\))?!?:.*/\1/')
 SCOPE=$(echo "$SUBJECT" | sed -E 's/^\w+(\((.+)\))?!?:.*/\2/')
 SUBJECT_TEXT=$(echo "$SUBJECT" | sed -E 's/^\w+(\(.+\))?!?: //')
 
-echo -e "${GREEN}✓ Commit message is valid!${NC}"
+echo -e "${GREEN}✓ 提交信息验证通过！${NC}"
 echo ""
-echo -e "${BLUE}Parsed commit:${NC}"
-echo -e "  ${YELLOW}Type:${NC}    $TYPE"
+echo -e "${BLUE}解析结果：${NC}"
+echo -e "  ${YELLOW}类型：${NC}  $TYPE"
 if [ -n "$SCOPE" ] && [ "$SCOPE" != "$SUBJECT" ]; then
-    echo -e "  ${YELLOW}Scope:${NC}   $SCOPE"
+    echo -e "  ${YELLOW}范围：${NC}  $SCOPE"
 fi
-echo -e "  ${YELLOW}Subject:${NC} $SUBJECT_TEXT"
+echo -e "  ${YELLOW}描述：${NC}  $SUBJECT_TEXT"
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""

@@ -90,6 +90,9 @@ struct MacOSComputerUse: AsyncParsableCommand {
             // 视觉定位
             FindImageCommand.self,
             ClickImageCommand.self,
+            // 文件对话框
+            DialogOpenCommand.self,
+            DialogSaveCommand.self,
         ]
     )
 }

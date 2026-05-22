@@ -1,141 +1,141 @@
-# Changelog
+# 更新日志
 
-All notable changes to this project will be documented in this file.
+本项目所有重要变更都将记录在此文件中。
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
+并且本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/spec/v2.0.0.html)。
 
-## [Unreleased]
+## [未发布]
 
 ## [3.1.0] - 2026-05-22
 
-### Added
+### 新增
 
-#### Assertion Commands (P0)
-- `assert-element-exists` - Verify UI element presence with configurable timeout and polling
-- `assert-text-exists` - OCR-based text verification on screen with region support
-- `assert-element-property` - Verify element attributes (enabled, focused, value, visible)
-- `assert-clipboard` - Verify clipboard content with contains/equals/not-empty modes
+#### 断言命令 (P0)
+- `assert-element-exists` - 验证 UI 元素是否存在，支持超时和轮询
+- `assert-text-exists` - 基于 OCR 的屏幕文本验证，支持区域查找
+- `assert-element-property` - 验证元素属性（enabled、focused、value、visible）
+- `assert-clipboard` - 验证剪贴板内容，支持包含/等于/非空模式
 
-#### Control Flow Commands (P0)
-- `retry` - Retry failed commands with configurable attempts and interval
+#### 控制流命令 (P0)
+- `retry` - 失败命令自动重试，支持配置重试次数和间隔
 
-#### Keyboard Enhancement (P0)
-- `hotkey` - Send keyboard shortcuts (e.g., command+s, shift+tab)
-- `key-sequence` - Send key sequences with delay support (e.g., vim operations)
+#### 键盘增强 (P0)
+- `hotkey` - 发送组合快捷键（如 command+s、shift+tab）
+- `key-sequence` - 发送按键序列，支持延迟（如 Vim 操作）
 
-#### Window Management Enhancement (P1)
-- `window-maximize` - Maximize application windows
+#### 窗口管理增强 (P1)
+- `window-maximize` - 最大化应用窗口
 
-#### Mouse Enhancement (P1)
-- `mouse-hover` - Hover over elements or coordinates with configurable duration
+#### 鼠标增强 (P1)
+- `mouse-hover` - 在元素或坐标上悬停，支持配置持续时间
 
-#### Test Reporting (P2)
-- `test-start` - Mark test case beginning with metadata
-- `test-end` - Mark test case end with result and reason
-- `step` - Mark individual test steps
+#### 测试报告 (P2)
+- `test-start` - 标记测试用例开始，支持元数据
+- `test-end` - 标记测试用例结束，支持结果和原因
+- `step` - 标记单个测试步骤
 
-### Changed
-- Updated version to 3.1.0
-- All new commands support JSON output for AI Agent integration
-- Improved error handling with descriptive messages
+### 变更
+- 版本号更新至 3.1.0
+- 所有新命令支持 JSON 输出，便于 AI Agent 集成
+- 改进错误处理，提供更详细的错误信息
 
 ## [3.0.0] - 2026-05-21
 
-### Added
+### 新增
 
-#### Core Commands
-- `screenshot` - Capture full screen, app window, or region
-- `cursor-position` - Get current mouse coordinates
-- `mouse-move` - Move mouse to absolute or relative position
-- `left-click` / `right-click` / `middle-click` / `double-click` - Mouse click operations
-- `drag` - Drag and drop between coordinates or elements
-- `scroll` - Scroll at position with direction and amount
+#### 核心命令
+- `screenshot` - 全屏、应用窗口或区域截图
+- `cursor-position` - 获取当前鼠标坐标
+- `mouse-move` - 移动鼠标到绝对或相对位置
+- `left-click` / `right-click` / `middle-click` / `double-click` - 鼠标点击操作
+- `drag` - 坐标或元素间的拖拽操作
+- `scroll` - 指定位置的滚动操作
 
-#### Keyboard Commands
-- `key` - Press individual keys
-- `type` - Type text into target elements
+#### 键盘命令
+- `key` - 按下单个键
+- `type` - 向目标元素输入文本
 
-#### Application Management
-- `app-launch` - Launch applications
-- `app-quit` - Quit applications (with force option)
-- `app-activate` - Bring application to foreground
-- `app-hide` - Hide application
-- `app-list` - List running applications
+#### 应用管理
+- `app-launch` - 启动应用
+- `app-quit` - 退出应用（支持强制退出）
+- `app-activate` - 将应用调至前台
+- `app-hide` - 隐藏应用
+- `app-list` - 列出运行中的应用
 
-#### Window Management
-- `window-list` - List all windows
-- `window-resize` - Resize windows
-- `window-move` - Move windows to position or center
-- `window-minimize` - Minimize windows
-- `window-close` - Close windows
-- `window-focus` - Focus windows
+#### 窗口管理
+- `window-list` - 列出所有窗口
+- `window-resize` - 调整窗口大小
+- `window-move` - 移动窗口位置或居中
+- `window-minimize` - 最小化窗口
+- `window-close` - 关闭窗口
+- `window-focus` - 聚焦窗口
 
-#### UI Element Operations
-- `element-find` - Find elements by role, title, identifier
-- `element-click` - Click elements
-- `element-info` - Get element information
-- `element-list` - List all elements in application
+#### UI 元素操作
+- `element-find` - 按角色、标题、标识符查找元素
+- `element-click` - 点击元素
+- `element-info` - 获取元素信息
+- `element-list` - 列出应用中的所有元素
 
-#### Wait Mechanisms
-- `wait-for-element` - Wait for element appearance/disappearance
-- `wait-for-app` - Wait for application launch/exit
-- `sleep` - Fixed duration sleep
+#### 等待机制
+- `wait-for-element` - 等待元素出现或消失
+- `wait-for-app` - 等待应用启动或退出
+- `sleep` - 固定时长等待
 
-#### Clipboard Operations
-- `clipboard-copy` - Copy text to clipboard
-- `clipboard-paste` - Paste from clipboard
-- `clipboard-get` - Get clipboard content
+#### 剪贴板操作
+- `clipboard-copy` - 复制文本到剪贴板
+- `clipboard-paste` - 从剪贴板粘贴
+- `clipboard-get` - 获取剪贴板内容
 
-#### System Information
-- `screen-info` - Get screen information
-- `display-list` - List all displays
-- `system-info` - Get system information
+#### 系统信息
+- `screen-info` - 获取屏幕信息
+- `display-list` - 列出所有显示器
+- `system-info` - 获取系统信息
 
-#### Process Management
-- `process-list` - List processes
-- `process-kill` - Kill processes by name or PID
+#### 进程管理
+- `process-list` - 列出进程
+- `process-kill` - 按名称或 PID 结束进程
 
-#### Recording and Playback
-- `record` - Record user actions
-- `replay` - Replay recorded actions
+#### 录制与回放
+- `record` - 录制用户操作
+- `replay` - 回放录制的操作
 
-#### Script Execution
-- `run-script` - Execute JSON script files
+#### 脚本执行
+- `run-script` - 执行 JSON 脚本文件
 
-#### OCR and Visual Matching
-- `ocr` - Optical character recognition
-- `find-image` - Find image on screen
-- `click-image` - Click found image
+#### OCR 与视觉定位
+- `ocr` - 光学字符识别
+- `find-image` - 在屏幕上查找图片
+- `click-image` - 点击找到的图片
 
-### Features
-- Zero token overhead - all operations run locally
-- JSON output support for all commands
-- Accessibility API integration
-- Vision framework for OCR
-- Core Graphics for screen capture
+### 特性
+- 零 Token 开销 - 所有操作本地执行
+- 所有命令支持 JSON 输出
+- Accessibility API 集成
+- Vision 框架 OCR 支持
+- Core Graphics 屏幕捕获
 
 ## [2.0.0] - 2026-05-20
 
-### Added
-- Initial stable release with basic mouse and keyboard control
-- Application launching and quitting
-- Basic screenshot functionality
+### 新增
+- 初始稳定版本，包含基础鼠标和键盘控制
+- 应用启动和退出
+- 基础截图功能
 
 ## [1.0.0] - 2026-05-19
 
-### Added
-- Project initialization
-- Basic CLI structure with ArgumentParser
-- Proof of concept for mouse movement
+### 新增
+- 项目初始化
+- 基于 ArgumentParser 的基础 CLI 结构
+- 鼠标移动概念验证
 
 ---
 
-## Version History Summary
+## 版本历史摘要
 
-| Version | Date | Key Features |
+| 版本 | 日期 | 主要特性 |
 |---------|------|--------------|
-| 3.1.0 | 2026-05-22 | Assertions, hotkeys, test reporting, retry |
-| 3.0.0 | 2026-05-21 | Full automation suite, OCR, recording |
-| 2.0.0 | 2026-05-20 | Stable basic controls |
-| 1.0.0 | 2026-05-19 | Initial release |
+| 3.1.0 | 2026-05-22 | 断言、快捷键、测试报告、重试 |
+| 3.0.0 | 2026-05-21 | 完整自动化套件、OCR、录制 |
+| 2.0.0 | 2026-05-20 | 稳定基础控制 |
+| 1.0.0 | 2026-05-19 | 初始版本 |
