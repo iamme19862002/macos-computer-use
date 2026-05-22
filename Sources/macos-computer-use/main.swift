@@ -97,6 +97,17 @@ struct MacOSComputerUse: AsyncParsableCommand {
             FileWriteCommand.self,
             FileExistsCommand.self,
             DirListCommand.self,
+            // 浏览器控制
+            BrowserNavigateCommand.self,
+            BrowserGetUrlCommand.self,
+            BrowserExecJsCommand.self,
+            BrowserNewTabCommand.self,
+            BrowserCloseTabCommand.self,
+            // AppleScript 桥接
+            OsascriptCommand.self,
+            // 弹窗处理
+            DialogDetectCommand.self,
+            DialogDismissCommand.self,
             // 文件对话框
             DialogOpenCommand.self,
             DialogSaveCommand.self,
