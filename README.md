@@ -21,6 +21,7 @@
 - 📋 **剪贴板操作** - 复制、粘贴、获取剪贴板内容
 - 🖥️ **系统信息** - 屏幕、显示器、系统信息查询
 - 📊 **进程管理** - 列出进程、结束进程
+- 📁 **文件系统** - 读取、写入、检查文件，列出目录
 - 🎬 **录制回放** - 录制操作序列并回放
 - 📜 **脚本执行** - 批量执行 JSON 脚本
 - 🔤 **OCR 识别** - 识别截图中的文字
@@ -273,6 +274,46 @@ macos-computer-use process-kill 12345
 macos-computer-use process-kill 12345 --force
 ```
 
+### 文件系统操作
+
+```bash
+# 读取文件内容
+macos-computer-use file-read ~/Documents/note.txt
+
+# 以 base64 编码读取二进制文件
+macos-computer-use file-read ~/Pictures/image.png --base64
+
+# 写入文件
+macos-computer-use file-write ~/output.txt --text "Hello, World!"
+
+# 追加内容
+macos-computer-use file-write ~/log.txt --text "New entry" --append
+
+# 检查文件是否存在
+macos-computer-use file-exists ~/Documents/report.pdf
+
+# 检查目录是否存在
+macos-computer-use file-exists ~/Downloads --directory
+
+# 列出目录内容
+macos-computer-use dir-list ~/Documents
+
+# 递归列出
+macos-computer-use dir-list ~/Projects --recursive
+```
+
+### 状态检测
+
+```bash
+# 获取当前前台应用
+macos-computer-use frontmost-app
+macos-computer-use frontmost-app --json
+
+# 获取当前焦点元素
+macos-computer-use focused-element
+macos-computer-use focused-element --json
+```
+
 ### 录制回放
 
 ```bash
@@ -405,6 +446,7 @@ Sources/macos-computer-use/
 │   ├── AppListCommand.swift
 │   ├── AppActivateCommand.swift
 │   ├── AppHideCommand.swift
+│   ├── FrontmostAppCommand.swift
 │   ├── WindowListCommand.swift
 │   ├── WindowResizeCommand.swift
 │   ├── WindowMoveCommand.swift
@@ -415,6 +457,7 @@ Sources/macos-computer-use/
 │   ├── ElementClickCommand.swift
 │   ├── ElementInfoCommand.swift
 │   ├── ElementListCommand.swift
+│   ├── FocusedElementCommand.swift
 │   ├── WaitForElementCommand.swift
 │   ├── WaitForAppCommand.swift
 │   ├── SleepCommand.swift
@@ -426,6 +469,10 @@ Sources/macos-computer-use/
 │   ├── SystemInfoCommand.swift
 │   ├── ProcessListCommand.swift
 │   ├── ProcessKillCommand.swift
+│   ├── FileReadCommand.swift
+│   ├── FileWriteCommand.swift
+│   ├── FileExistsCommand.swift
+│   ├── DirListCommand.swift
 │   ├── RecordCommand.swift
 │   ├── ReplayCommand.swift
 │   ├── RunScriptCommand.swift

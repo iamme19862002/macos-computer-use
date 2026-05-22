@@ -8,15 +8,16 @@
 |------|----------|------|
 | [鼠标操作](#鼠标操作) | 8 | 移动、点击、拖拽、滚动 |
 | [键盘操作](#键盘操作) | 4 | 按键、输入、快捷键、序列 |
-| [应用管理](#应用管理) | 5 | 启动、退出、激活、隐藏、列表 |
+| [应用管理](#应用管理) | 6 | 启动、退出、激活、隐藏、列表、前台应用 |
 | [窗口管理](#窗口管理) | 7 | 列表、调整、移动、状态控制 |
-| [UI 元素](#ui-元素) | 4 | 查找、点击、信息、列表 |
+| [UI 元素](#ui-元素) | 5 | 查找、点击、信息、列表、焦点元素 |
 | [断言验证](#断言验证) | 4 | 元素、文本、属性、剪贴板 |
 | [等待机制](#等待机制) | 3 | 元素、应用、固定等待 |
 | [剪贴板](#剪贴板) | 3 | 复制、粘贴、获取 |
 | [截图与 OCR](#截图与-ocr) | 4 | 截图、OCR、视觉定位 |
 | [系统信息](#系统信息) | 3 | 屏幕、显示器、系统 |
 | [进程管理](#进程管理) | 2 | 列表、结束 |
+| [文件系统](#文件系统) | 4 | 读取、写入、检查、列出 |
 | [测试报告](#测试报告) | 3 | 开始、结束、步骤 |
 | [控制流](#控制流) | 1 | 重试 |
 | [录制回放](#录制回放) | 2 | 录制、回放 |
@@ -215,6 +216,15 @@ macos-computer-use app-list --frontmost-only
 macos-computer-use app-list --format json
 ```
 
+### frontmost-app
+
+获取当前前台应用信息。
+
+```bash
+macos-computer-use frontmost-app
+macos-computer-use frontmost-app --json
+```
+
 ---
 
 ## 窗口管理
@@ -314,6 +324,15 @@ macos-computer-use element-info --app Safari --name "用户名输入框"
 ```bash
 macos-computer-use element-list --app Safari
 macos-computer-use element-list --app Safari --type button
+```
+
+### focused-element
+
+获取当前焦点 UI 元素信息。
+
+```bash
+macos-computer-use focused-element
+macos-computer-use focused-element --json
 ```
 
 ---
@@ -516,6 +535,82 @@ macos-computer-use process-kill --pid 12345
 
 ---
 
+## 文件系统
+
+### file-read
+
+读取文件内容。
+
+```bash
+# 读取文本文件
+macos-computer-use file-read ~/Documents/note.txt
+
+# 以 base64 编码输出（适用于二进制文件）
+macos-computer-use file-read ~/Pictures/image.png --base64
+
+# JSON 输出
+macos-computer-use file-read ~/config.json --json
+```
+
+### file-write
+
+写入文件内容。
+
+```bash
+# 写入文本
+macos-computer-use file-write ~/output.txt --text "Hello, World!"
+
+# 追加模式
+macos-computer-use file-write ~/log.txt --text "New log entry" --append
+
+# 从 base64 解码写入
+macos-computer-use file-write ~/image.png --base64 "iVBORw0KGgo..."
+
+# 自动创建父目录
+macos-computer-use file-write ~/new/dir/file.txt --text "content" --create-dirs
+```
+
+### file-exists
+
+检查文件或目录是否存在。
+
+```bash
+# 检查文件是否存在
+macos-computer-use file-exists ~/Documents/report.pdf
+
+# 检查目录是否存在
+macos-computer-use file-exists ~/Downloads --directory
+
+# 反向断言（断言不存在）
+macos-computer-use file-exists ~/temp.txt --not-exists
+
+# JSON 输出
+macos-computer-use file-exists ~/data.json --json
+```
+
+### dir-list
+
+列出目录内容。
+
+```bash
+# 列出当前目录
+macos-computer-use dir-list
+
+# 列出指定目录
+macos-computer-use dir-list ~/Documents
+
+# 递归列出
+macos-computer-use dir-list ~/Projects --recursive
+
+# 包含隐藏文件
+macos-computer-use dir-list ~ --hidden
+
+# JSON 输出
+macos-computer-use dir-list ~/Downloads --json
+```
+
+---
+
 ## 测试报告
 
 ### test-start
@@ -608,6 +703,8 @@ macos-computer-use run-script --input workflow.json
 | 操作 | 命令 |
 |------|------|
 | 启动应用 | `app-launch --app <name>` |
+| 获取前台应用 | `frontmost-app` |
+| 获取焦点元素 | `focused-element` |
 | 点击元素 | `element-click --app <app> --name <name>` |
 | 输入文字 | `type --app <app> --target <target> --text <text>` |
 | 按键 | `key --app <app> --key <key>` |
@@ -616,4 +713,8 @@ macos-computer-use run-script --input workflow.json
 | 断言文本 | `assert-text-exists --app <app> --text <text> --timeout <sec>` |
 | 截图 | `screenshot --app <app> --output <file>` |
 | OCR | `ocr --app <app>` |
+| 读取文件 | `file-read <path>` |
+| 写入文件 | `file-write <path> --text <text>` |
+| 检查文件 | `file-exists <path>` |
+| 列出目录 | `dir-list <path>` |
 | 重试 | `retry --attempts <n> --command "<cmd>"` |
