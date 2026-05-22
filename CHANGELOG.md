@@ -21,10 +21,32 @@
 - `frontmost-app` - 获取当前前台应用信息
 - `focused-element` - 获取当前焦点 UI 元素信息
 
+#### 浏览器控制命令 (P1)
+- `browser-navigate` - 在浏览器中导航到指定 URL（支持 Safari/Chrome）
+- `browser-get-url` - 获取浏览器当前页面 URL
+- `browser-exec-js` - 在浏览器页面执行 JavaScript
+- `browser-new-tab` - 新建浏览器标签页
+- `browser-close-tab` - 关闭当前浏览器标签页
+
+#### AppleScript 桥接命令 (P1)
+- `osascript` - 执行 AppleScript 或 JavaScript for Automation (JXA) 脚本
+
+#### 弹窗处理命令 (P1)
+- `dialog-detect` - 检测系统弹窗和权限对话框
+- `dialog-dismiss` - 自动关闭弹窗（支持按钮点击和 Escape 键）
+
 ### 变更
 - 版本号更新至 3.2.0
 - 所有新增命令支持 JSON 输出，便于 AI Agent 集成
 - 新增文件系统命令补齐 AI Agent "读数据→处理→写结果"闭环能力
+- 新增浏览器控制命令支持网页自动化和 SaaS 操作
+- 新增弹窗处理命令提升自动化稳定性
+
+### 改进
+- `run-script` 脚本引擎升级：支持变量、条件分支（if）、循环（for-each/while）、
+  每步重试、dry-run 模式
+- 引入 `CommandResult` 统一返回格式和 `ExitStatus` 结构化错误码体系
+- 所有文档统一使用简体中文命名
 
 ## [3.1.0] - 2026-05-22
 
