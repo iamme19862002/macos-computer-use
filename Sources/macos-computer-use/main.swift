@@ -15,7 +15,7 @@ struct MacOSComputerUse: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "macos-computer-use",
         abstract: "macOS 通用计算机控制 CLI - 零 token 开销的 computer-use 工具",
-        version: "3.0.0",
+        version: "3.1.0",
         subcommands: [
             // 截图
             ScreenshotCommand.self,
@@ -44,8 +44,11 @@ struct MacOSComputerUse: AsyncParsableCommand {
             WindowResizeCommand.self,
             WindowMoveCommand.self,
             WindowMinimizeCommand.self,
+            WindowMaximizeCommand.self,
             WindowCloseCommand.self,
             WindowFocusCommand.self,
+            // 鼠标增强
+            MouseHoverCommand.self,
             // UI 元素
             ElementFindCommand.self,
             ElementClickCommand.self,
@@ -62,6 +65,10 @@ struct MacOSComputerUse: AsyncParsableCommand {
             AssertClipboardCommand.self,
             // 重试
             RetryCommand.self,
+            // 测试报告
+            TestStartCommand.self,
+            TestEndCommand.self,
+            StepCommand.self,
             // 剪贴板
             ClipboardCopyCommand.self,
             ClipboardPasteCommand.self,
