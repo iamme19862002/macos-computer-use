@@ -15,7 +15,7 @@ struct MacOSComputerUse: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "macos-computer-use",
         abstract: "macOS 通用计算机控制 CLI - 零 token 开销的 computer-use 工具",
-        version: "3.1.0",
+        version: "3.2.0",
         subcommands: [
             // 截图
             ScreenshotCommand.self,
@@ -39,6 +39,7 @@ struct MacOSComputerUse: AsyncParsableCommand {
             AppListCommand.self,
             AppActivateCommand.self,
             AppHideCommand.self,
+            FrontmostAppCommand.self,
             // 窗口管理
             WindowListCommand.self,
             WindowResizeCommand.self,
@@ -54,6 +55,7 @@ struct MacOSComputerUse: AsyncParsableCommand {
             ElementClickCommand.self,
             ElementInfoCommand.self,
             ElementListCommand.self,
+            FocusedElementCommand.self,
             // 等待机制
             WaitForElementCommand.self,
             WaitForAppCommand.self,
@@ -90,6 +92,22 @@ struct MacOSComputerUse: AsyncParsableCommand {
             // 视觉定位
             FindImageCommand.self,
             ClickImageCommand.self,
+            // 文件系统
+            FileReadCommand.self,
+            FileWriteCommand.self,
+            FileExistsCommand.self,
+            DirListCommand.self,
+            // 浏览器控制
+            BrowserNavigateCommand.self,
+            BrowserGetUrlCommand.self,
+            BrowserExecJsCommand.self,
+            BrowserNewTabCommand.self,
+            BrowserCloseTabCommand.self,
+            // AppleScript 桥接
+            OsascriptCommand.self,
+            // 弹窗处理
+            DialogDetectCommand.self,
+            DialogDismissCommand.self,
             // 文件对话框
             DialogOpenCommand.self,
             DialogSaveCommand.self,

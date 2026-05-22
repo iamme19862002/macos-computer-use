@@ -6,10 +6,10 @@
 
 | 文档 | 说明 | 目标读者 |
 |------|------|----------|
-| [COMMANDS.md](COMMANDS.md) | 完整命令参考手册 | 所有用户 |
-| [AI_AGENT_GUIDE.md](AI_AGENT_GUIDE.md) | AI Agent 实战指南 | AI 开发者 |
-| [AUTOMATION_SCENARIOS.md](AUTOMATION_SCENARIOS.md) | 自动化场景案例 | 自动化工程师 |
-| [PRODUCTIVITY_GUIDE.md](PRODUCTIVITY_GUIDE.md) | 提效实战指南 | 效率工作者 |
+| [命令参考手册](命令参考手册.md) | 完整命令参考手册 | 所有用户 |
+| [智能体实战指南](智能体实战指南.md) | AI Agent 实战指南 | AI 开发者 |
+| [自动化场景案例](自动化场景案例.md) | 自动化场景案例 | 自动化工程师 |
+| [提效实战指南](提效实战指南.md) | 提效实战指南 | 效率工作者 |
 
 ## 快速开始
 
@@ -35,6 +35,6 @@ macos-computer-use --help
 
 ## 版本信息
 
-当前版本：**3.1.0**
+当前版本：**3.2.0**
 
 查看 [CHANGELOG.md](../CHANGELOG.md) 了解详细更新历史。

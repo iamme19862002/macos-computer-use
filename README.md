@@ -21,8 +21,12 @@
 - 📋 **剪贴板操作** - 复制、粘贴、获取剪贴板内容
 - 🖥️ **系统信息** - 屏幕、显示器、系统信息查询
 - 📊 **进程管理** - 列出进程、结束进程
+- 📁 **文件系统** - 读取、写入、检查文件，列出目录
+- 🌐 **浏览器控制** - 导航、获取 URL、执行 JS、标签页管理
+- 🎭 **AppleScript 桥接** - 执行 AppleScript/JXA 脚本
+- 🔔 **弹窗处理** - 检测和关闭系统弹窗
 - 🎬 **录制回放** - 录制操作序列并回放
-- 📜 **脚本执行** - 批量执行 JSON 脚本
+- 📜 **脚本执行** - 批量执行 JSON 脚本（支持变量/条件/循环）
 - 🔤 **OCR 识别** - 识别截图中的文字
 - 🎯 **视觉定位** - 基于模板匹配的图像识别定位
 - 🚀 **高性能** - 原生 Swift 实现，低延迟
@@ -273,6 +277,46 @@ macos-computer-use process-kill 12345
 macos-computer-use process-kill 12345 --force
 ```
 
+### 文件系统操作
+
+```bash
+# 读取文件内容
+macos-computer-use file-read ~/Documents/note.txt
+
+# 以 base64 编码读取二进制文件
+macos-computer-use file-read ~/Pictures/image.png --base64
+
+# 写入文件
+macos-computer-use file-write ~/output.txt --text "Hello, World!"
+
+# 追加内容
+macos-computer-use file-write ~/log.txt --text "New entry" --append
+
+# 检查文件是否存在
+macos-computer-use file-exists ~/Documents/report.pdf
+
+# 检查目录是否存在
+macos-computer-use file-exists ~/Downloads --directory
+
+# 列出目录内容
+macos-computer-use dir-list ~/Documents
+
+# 递归列出
+macos-computer-use dir-list ~/Projects --recursive
+```
+
+### 状态检测
+
+```bash
+# 获取当前前台应用
+macos-computer-use frontmost-app
+macos-computer-use frontmost-app --json
+
+# 获取当前焦点元素
+macos-computer-use focused-element
+macos-computer-use focused-element --json
+```
+
 ### 录制回放
 
 ```bash
@@ -286,11 +330,56 @@ macos-computer-use record --output actions.json --duration 30
 macos-computer-use replay --file actions.json
 ```
 
+### 浏览器控制
+
+```bash
+# 导航到 URL
+macos-computer-use browser-navigate https://apple.com
+
+# 获取当前页面 URL
+macos-computer-use browser-get-url
+
+# 执行 JavaScript
+macos-computer-use browser-exec-js "document.title"
+
+# 新建标签页
+macos-computer-use browser-new-tab https://example.com
+
+# 关闭标签页
+macos-computer-use browser-close-tab
+```
+
+### AppleScript 桥接
+
+```bash
+# 执行 AppleScript
+macos-computer-use osascript 'display dialog "Hello"'
+
+# 执行 JXA
+macos-computer-use osascript 'Application("Safari").name()' --language javascript
+```
+
+### 弹窗处理
+
+```bash
+# 检测系统弹窗
+macos-computer-use dialog-detect
+
+# 关闭弹窗
+macos-computer-use dialog-dismiss
+
+# 点击指定按钮关闭
+macos-computer-use dialog-dismiss --click "不允许"
+```
+
 ### 脚本执行
 
 ```bash
 # 执行 JSON 脚本文件
 macos-computer-use run-script --file workflow.json
+
+# 仅验证脚本语法
+macos-computer-use run-script --file workflow.json --dry-run
 ```
 
 脚本文件示例 (`workflow.json`):
@@ -405,6 +494,7 @@ Sources/macos-computer-use/
 │   ├── AppListCommand.swift
 │   ├── AppActivateCommand.swift
 │   ├── AppHideCommand.swift
+│   ├── FrontmostAppCommand.swift
 │   ├── WindowListCommand.swift
 │   ├── WindowResizeCommand.swift
 │   ├── WindowMoveCommand.swift
@@ -415,6 +505,7 @@ Sources/macos-computer-use/
 │   ├── ElementClickCommand.swift
 │   ├── ElementInfoCommand.swift
 │   ├── ElementListCommand.swift
+│   ├── FocusedElementCommand.swift
 │   ├── WaitForElementCommand.swift
 │   ├── WaitForAppCommand.swift
 │   ├── SleepCommand.swift
@@ -426,6 +517,18 @@ Sources/macos-computer-use/
 │   ├── SystemInfoCommand.swift
 │   ├── ProcessListCommand.swift
 │   ├── ProcessKillCommand.swift
+│   ├── FileReadCommand.swift
+│   ├── FileWriteCommand.swift
+│   ├── FileExistsCommand.swift
+│   ├── DirListCommand.swift
+│   ├── BrowserNavigateCommand.swift
+│   ├── BrowserGetUrlCommand.swift
+│   ├── BrowserExecJsCommand.swift
+│   ├── BrowserNewTabCommand.swift
+│   ├── BrowserCloseTabCommand.swift
+│   ├── OsascriptCommand.swift
+│   ├── DialogDetectCommand.swift
+│   ├── DialogDismissCommand.swift
 │   ├── RecordCommand.swift
 │   ├── ReplayCommand.swift
 │   ├── RunScriptCommand.swift
@@ -434,7 +537,8 @@ Sources/macos-computer-use/
 │   └── ClickImageCommand.swift
 └── Utils/
     ├── KeyMap.swift              # 键名映射
-    └── JSONUtils.swift           # JSON 工具
+    ├── JSONUtils.swift           # JSON 工具
+    └── CommandResult.swift       # 统一返回格式
 ```
 
 ### 构建
