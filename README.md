@@ -6,7 +6,9 @@
 
 > 🖱️ macOS 通用计算机控制 CLI - 零 token 开销的 computer-use 工具
 
-一个轻量级、高效的 macOS 命令行工具，提供 **68+ 条命令** 用于自动化控制鼠标、键盘、屏幕截图、应用管理和 UI 元素操作。专为 **AI Agent** 和自动化脚本设计，原生支持 **MCP Server** 模式，提供类似 [xdotool](https://github.com/jordansissel/xdotool) 的功能，但专为 macOS 优化。
+一个原生 Swift 编写的高性能 macOS 自动化工具集，提供 **68+ 条命令** 完整覆盖鼠标控制、键盘输入、应用与窗口管理、UI 元素定位、屏幕截图与 OCR、浏览器自动化、文件系统操作、弹窗处理、录制回放、脚本执行、系统通知等全场景计算机控制能力。
+
+与云端方案不同，所有操作**本地执行、零网络依赖、零 Token 开销**，响应延迟低至毫秒级。工具同时内置 **MCP Server 模式**，支持通过 [Model Context Protocol](https://modelcontextprotocol.io) 协议被 Claude、Cursor、Windsurf 等 AI Agent 直接调用，是构建本地 AI 工作流的理想基础设施。
 
 ## ✨ 特性
 
@@ -590,8 +592,9 @@ swift test
 
 ## 🙏 致谢
 
-- 灵感来源于 [xdotool](https://github.com/jordansissel/xdotool) - Linux 的 X11 自动化工具
+- 受 [Anthropic Computer Use](https://docs.anthropic.com/en/docs/build-with-claude/computer-use) 和 [OpenAI CUA](https://platform.openai.com/docs/guides/computer-use) 启发，致力于提供本地化的 computer-use 能力
 - 使用 [swift-argument-parser](https://github.com/apple/swift-argument-parser) 构建 CLI 界面
+- 遵循 [Model Context Protocol](https://modelcontextprotocol.io) 标准实现 AI Agent 集成
 
 ---
 
