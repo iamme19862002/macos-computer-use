@@ -247,3 +247,6 @@ terraform.tfvars
 .fusebox/
 .dynamodb/
 .tern-port
+
+# Local development only (not for git)
+.local-dev/
