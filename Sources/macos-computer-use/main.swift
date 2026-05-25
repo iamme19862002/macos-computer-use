@@ -122,6 +122,8 @@ struct MacOSComputerUse: AsyncParsableCommand {
             DialogOpenCommand.self,
             DialogSaveCommand.self,
             DialogOpenFileCommand.self,
+            DialogCancelCommand.self,
+            DialogConfirmCommand.self,
             // MCP Server
             ServeCommand.self,
         ]
