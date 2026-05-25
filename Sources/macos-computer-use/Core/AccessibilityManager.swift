@@ -199,8 +199,13 @@ struct AccessibilityManager {
             if let role = byRole, !info.role.lowercased().contains(role.lowercased()) {
                 match = false
             }
-            if let title = byTitle, !info.title.lowercased().contains(title.lowercased()) {
-                match = false
+            if let title = byTitle {
+                let infoTitle = info.title
+                let searchTitle = title
+                let isMatch = infoTitle.range(of: searchTitle, options: .caseInsensitive) != nil
+                if !isMatch {
+                    match = false
+                }
             }
             if let identifier = byIdentifier, info.identifier?.lowercased().contains(identifier.lowercased()) != true {
                 match = false
