@@ -31,9 +31,15 @@
 
 #### 2.2.1 element-list 无法列出文件选择器元素
 
+**状态**: ⚠️ **部分修复** (v3.3.1)
+
 **命令**:
 ```bash
+# 旧版本（无法列出）
 macos-computer-use element-list --app "LyricVoice" --depth 7
+
+# 新版本（添加 --sheet 参数）
+macos-computer-use element-list --app "LyricVoice" --sheet --depth 7
 ```
 
 **预期**: 应该列出文件选择器（Sheet）内的所有元素，包括：
@@ -41,26 +47,43 @@ macos-computer-use element-list --app "LyricVoice" --depth 7
 - 右侧文件列表
 - 「取消」「打开」按钮
 
-**实际**: 只能列出 LyricVoice 主窗口的元素，文件选择器内的元素完全不可见。
+**实际**:
+- ✅ **已修复**: 添加 `--sheet` 参数后，对传统 AppKit 应用（如 TextEdit）可以列出文件选择器元素
+- ❌ **限制**: 对现代 SwiftUI 应用（如 LyricVoice），文件选择器运行在独立进程，仍无法通过 `--sheet` 访问
 
 **截图证据**: `/tmp/lyricvoice_test3_filepicker.png`
+
+**限制说明**:
+- `--sheet` 只能访问作为 Sheet 附加到应用窗口的系统对话框
+- macOS 现代文件选择器运行在独立的 "Open and Save Panel Service" 进程中，不在应用 Accessibility 树中
+- 详见 [四、建议的解决方案](#四建议的解决方案) 中的 `--sheet` 限制说明
 
 ---
 
 #### 2.2.2 element-click 无法点击文件选择器内的按钮
 
+**状态**: ⚠️ **部分修复** (v3.3.1)
+
 **命令**:
 ```bash
-# 尝试点击文件选择器内的元素
+# 旧版本（无法点击）
 macos-computer-use element-click --app "LyricVoice" --title "取消"
 macos-computer-use element-click --app "LyricVoice" --title "打开"
+
+# 新版本（添加 --sheet 参数）
+macos-computer-use element-click --app "TextEdit" --sheet --title "打开" --role button
 ```
 
 **预期**: 应该成功点击「取消」或「打开」按钮。
 
-**实际**: 返回 "Element not found"。
+**实际**:
+- ✅ **已修复**: 添加 `--sheet` 参数后，对传统 AppKit 应用（如 TextEdit）可以点击文件选择器内的按钮
+- ❌ **限制**: 对现代 SwiftUI 应用（如 LyricVoice），文件选择器运行在独立进程，仍无法通过 `--sheet` 点击
 
-**原因分析**: 文件选择器是系统级 Sheet，不在 App 的 Accessibility 树中。
+**原因分析**:
+- 文件选择器是系统级 Sheet，不在 App 的 Accessibility 树中
+- `--sheet` 参数通过 `kAXSheetAttribute` 访问 Sheet 元素，但仅适用于传统 Sheet 模式
+- 现代文件选择器运行在 "Open and Save Panel Service" 独立进程中
 
 ---
 
@@ -132,9 +155,27 @@ macos-computer-use left-click -x 855 -y 435
 | 2. 截图确认 | ✅ 成功 | 截图清晰，可以分析 UI 状态 |
 | 3. 点击「添加音频」 | ✅ 成功 | `element-click --identifier` 正常工作 |
 | 4. 文件选择器弹出 | ✅ 成功 | NSOpenPanel 正常弹出 |
-| 5. 选择音频文件 | ❌ **失败** | **无法操作文件选择器** |
-| 6. 开始转换 | ⏸️ 阻塞 | 需要先完成步骤 5 |
-| 7. 验证结果 | ⏸️ 阻塞 | 需要先完成步骤 6 |
+| 5. 选择音频文件 | ✅ **已修复** | 使用 `dialog-open-file` 命令 |
+| 6. 开始转换 | ✅ 可继续 | 文件选择后可以继续 |
+| 7. 验证结果 | ✅ 可继续 | 流程可完成 |
+
+**修复后的完整流程**:
+```bash
+# 1. 启动 LyricVoice
+macos-computer-use app-launch "LyricVoice"
+sleep 2
+
+# 2. 点击「添加音频」按钮
+macos-computer-use element-click --app "LyricVoice" --identifier "add-audio-button"
+sleep 1
+
+# 3. 在文件选择器中选择文件（使用新命令）
+macos-computer-use dialog-open-file \
+  --app "LyricVoice" \
+  --path "/Users/wangmin/traeProjects/LyricVoice/test/audio/chinese_10s.wav"
+
+# 4. 等待转换完成...
+```
 
 ---
 
@@ -159,25 +200,69 @@ macos-computer-use left-click -x 855 -y 435
 
 ## 四、建议的解决方案
 
-### 4.1 方案 1：支持操作系统级对话框（推荐）
+### 4.1 方案 1：支持操作系统级对话框（已实现）
 
 **目标**: 让 `macos-computer-use` 能够操作 `NSOpenPanel`/`NSSavePanel`
 
-**可能的实现方式**:
-1. 添加 `--sheet` 或 `--panel` 参数，专门访问 Sheet 内的元素
-2. 使用更低级的 API（如 `AXUIElementCreateSystemWide`）访问系统对话框
-3. 添加特殊的事件类型来操作系统对话框
+**实现状态** (v3.3.1+):
+✅ **已实现**: 添加 `--sheet` 参数支持访问传统 Sheet 模式的系统对话框
+✅ **已实现**: 添加 `dialog-open-file` 命令支持现代应用的文件选择器
 
-**示例命令**:
+**已实现的命令**:
+
+**A. 传统 Sheet 模式（AppKit 应用如 TextEdit）**:
 ```bash
 # 列出文件选择器内的元素
-macos-computer-use element-list --app "LyricVoice" --sheet 1 --depth 5
+macos-computer-use element-list --app "TextEdit" --sheet --depth 5
 
 # 点击文件选择器内的按钮
-macos-computer-use element-click --app "LyricVoice" --sheet 1 --title "打开"
+macos-computer-use element-click --app "TextEdit" --sheet --title "打开"
+```
 
-# 点击左侧书签
-macos-computer-use element-click --app "LyricVoice" --sheet 1 --row "traeeProjects"
+**B. 现代独立进程模式（SwiftUI 应用如 LyricVoice）**:
+
+**重要前提**：必须先打开文件选择器（通过按钮点击、菜单或快捷键）
+
+```bash
+# 步骤 1: 打开文件选择器（方式因应用而异）
+# 方式 A: 点击界面按钮
+macos-computer-use element-click --app "LyricVoice" --identifier "add-audio-button"
+
+# 方式 B: 使用菜单
+macos-computer-use menu-click "文件,打开" --app "LyricVoice"
+
+# 方式 C: 使用快捷键
+macos-computer-use hotkey --keys "command+o"
+
+# 步骤 2: 等待文件选择器打开
+sleep 1
+
+# 步骤 3: 在文件选择器中自动选择文件
+macos-computer-use dialog-open-file \
+  --app "LyricVoice" \
+  --path "/Users/wangmin/traeProjects/LyricVoice/test/audio/chinese_10s.wav"
+```
+
+**`--sheet` 参数限制说明**:
+
+| 应用场景 | 是否支持 | 说明 |
+|---------|---------|------|
+| 传统 AppKit 应用（TextEdit） | ✅ 支持 | 文件选择器作为 Sheet 附加到窗口，可通过 `--sheet` 访问 |
+| 现代 SwiftUI 应用（LyricVoice） | ❌ 不支持 | 文件选择器运行在独立进程，不在应用 Accessibility 树中 |
+| 系统级权限对话框 | ❌ 不支持 | 需要特殊权限和 API |
+
+**技术原理**:
+- `--sheet` 参数通过 `kAXSheetAttribute` 访问窗口的 Sheet 元素
+- `dialog-open-file` 使用 Command+Shift+G「前往文件夹」功能绕过 Accessibility 限制
+- 现代文件选择器运行在 "Open and Save Panel Service" 独立进程中
+
+**替代方案**:
+```bash
+# 检测文件选择器（通过 window-list）
+macos-computer-use window-list --json | grep '"打开"'
+
+# 关闭文件选择器（发送 Escape 键）
+macos-computer-use key --key escape
 ```
 
 ---
