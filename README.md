@@ -155,10 +155,13 @@ macos-computer-use scroll -x 500 -y 300 --direction down --amount 500
 ### 键盘控制
 
 ```bash
-# 按键组合
-macos-computer-use key --keys "command+c"
-macos-computer-use key --keys "shift+tab"
-macos-computer-use key --keys "command+shift+4"
+# 按键
+macos-computer-use key --key "return"
+macos-computer-use key --key "escape"
+
+# 快捷键组合
+macos-computer-use hotkey --keys "command+c"
+macos-computer-use hotkey --keys "shift+tab"
 
 # 输入文本
 macos-computer-use type --text "Hello, World!"

@@ -13,8 +13,14 @@ import CoreGraphics
 struct DragCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "drag",
-        abstract: "从当前位置拖拽到目标坐标"
+        abstract: "从指定位置拖拽到目标坐标（默认从当前鼠标位置）"
     )
+
+    @Option(name: .long, help: "起点 X 坐标（可选，默认当前鼠标位置）")
+    var startX: Int?
+
+    @Option(name: .long, help: "起点 Y 坐标（可选，默认当前鼠标位置）")
+    var startY: Int?
 
     @Option(name: .long, help: "目标 X 坐标")
     var toX: Int
@@ -26,7 +32,12 @@ struct DragCommand: AsyncParsableCommand {
     var json = false
 
     func run() async throws {
-        let from = MouseController.currentPosition()
+        let from: CGPoint
+        if let sx = startX, let sy = startY {
+            from = CGPoint(x: sx, y: sy)
+        } else {
+            from = MouseController.currentPosition()
+        }
         let to = CGPoint(x: toX, y: toY)
         MouseController.drag(from: from, to: to)
 

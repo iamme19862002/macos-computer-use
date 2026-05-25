@@ -16,16 +16,16 @@ struct KeyCommand: AsyncParsableCommand {
     )
 
     @Option(name: .shortAndLong, help: "键名组合，用 + 连接（如 command+c）")
-    var keys: String
+    var key: String
 
     @Flag(name: .shortAndLong, help: "JSON 输出")
     var json = false
 
     func run() async throws {
-        let keyCodes = KeyboardController.parseKeys(keys)
+        let keyCodes = KeyboardController.parseKeys(key)
 
         guard !keyCodes.isEmpty else {
-            throw ValidationError("Invalid key combination: \(keys)")
+            throw ValidationError("Invalid key combination: \(key)")
         }
 
         KeyboardController.pressKeys(keyCodes)
@@ -35,11 +35,11 @@ struct KeyCommand: AsyncParsableCommand {
             {
               "success": true,
               "action": "key",
-              "keys": "\(keys)"
+              "key": "\(key)"
             }
             """)
         } else {
-            print("✓ Key pressed: \(keys)")
+            print("✓ Key pressed: \(key)")
         }
     }
 }

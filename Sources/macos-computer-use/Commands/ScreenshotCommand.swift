@@ -30,15 +30,37 @@ struct ScreenshotCommand: AsyncParsableCommand {
     @Option(name: .long, help: "截取指定窗口 ID")
     var windowId: UInt32?
 
+    @Option(name: .long, help: "截取指定应用窗口（应用名称或 Bundle ID）")
+    var app: String?
+
     @Flag(name: .long, help: "标记 UI 元素")
     var markElements = false
 
     func run() async throws {
+        var resolvedWindowId = windowId
+        
+        if let appName = app {
+            resolvedWindowId = ScreenshotTool.findWindowId(forApp: appName)
+            guard resolvedWindowId != nil else {
+                if json {
+                    print("""
+                    {
+                      "success": false,
+                      "error": "App not found: \(appName)"
+                    }
+                    """)
+                } else {
+                    print("✗ App not found: \(appName)")
+                }
+                return
+            }
+        }
+        
         let result = ScreenshotTool.capture(
             outputDir: outputDir,
             filename: filename,
             region: region,
-            windowId: windowId,
+            windowId: resolvedWindowId,
             markElements: markElements
         )
 
@@ -54,8 +76,8 @@ struct ScreenshotCommand: AsyncParsableCommand {
                 if region != nil {
                     print("  Region: \(region!)")
                 }
-                if windowId != nil {
-                    print("  Window ID: \(windowId!)")
+                if resolvedWindowId != nil {
+                    print("  Window ID: \(resolvedWindowId!)")
                 }
                 if markElements {
                     print("  Elements: marked")
