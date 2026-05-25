@@ -13,7 +13,7 @@ import Foundation
 struct ElementListCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "element-list",
-        abstract: "列出应用的 UI 元素树"
+        abstract: "列出应用的 UI 元素树，支持系统对话框 (Sheet)"
     )
 
     @Option(name: .long, help: "指定应用名称")
@@ -22,12 +22,15 @@ struct ElementListCommand: AsyncParsableCommand {
     @Option(name: .long, help: "最大深度 (默认: 3)")
     var depth: Int?
 
+    @Flag(name: .long, help: "包含系统对话框 (Sheet) 元素")
+    var sheet = false
+
     @Flag(name: .shortAndLong, help: "JSON 输出")
     var json = false
 
     func run() async throws {
         let maxDepth = depth ?? 3
-        let tree = AccessibilityManager.getElementTree(inApp: app, maxDepth: maxDepth)
+        let tree = AccessibilityManager.getElementTree(inApp: app, maxDepth: maxDepth, includeSheets: sheet)
 
         if json {
             let encoder = JSONEncoder()
@@ -35,7 +38,8 @@ struct ElementListCommand: AsyncParsableCommand {
             let data = try encoder.encode(tree)
             print(String(data: data, encoding: .utf8)!)
         } else {
-            print("UI Element Tree (depth: \(maxDepth)):")
+            let source = sheet ? "Sheet" : "UI Element"
+            print("\(source) Tree (depth: \(maxDepth)):")
             for (index, root) in tree.enumerated() {
                 printElement(root, prefix: "  [\(index)]", depth: 0, maxDepth: maxDepth)
             }

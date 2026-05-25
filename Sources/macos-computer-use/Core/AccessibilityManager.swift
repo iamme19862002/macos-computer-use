@@ -10,6 +10,10 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import ApplicationServices
+
+// Sheet attribute for accessing system dialogs (NSOpenPanel/NSSavePanel)
+let kAXSheetAttribute = "AXSheet"
 
 struct UIElementInfo: Codable {
     let role: String
@@ -24,6 +28,29 @@ struct UIElementInfo: Codable {
 }
 
 struct AccessibilityManager {
+    
+    static func findSheetElements(inApp appName: String) -> [AXUIElement] {
+        let apps = findAppElements(named: appName)
+        var sheets: [AXUIElement] = []
+        
+        for app in apps {
+            var windows: CFTypeRef?
+            let result = AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windows)
+            
+            if result == .success, let windowArray = windows as? [AXUIElement] {
+                for window in windowArray {
+                    var sheet: CFTypeRef?
+                    let sheetResult = AXUIElementCopyAttributeValue(window, kAXSheetAttribute as CFString, &sheet)
+                    
+                    if sheetResult == .success, let sheetElement = sheet {
+                        sheets.append(sheetElement as! AXUIElement)
+                    }
+                }
+            }
+        }
+        
+        return sheets
+    }
     
     static func findElements(
         byRole: String? = nil,
@@ -109,7 +136,14 @@ struct AccessibilityManager {
         )
     }
     
-    static func getElementTree(inApp: String? = nil, maxDepth: Int = 3) -> [UIElementInfo] {
+    static func getElementTree(inApp: String? = nil, maxDepth: Int = 3, includeSheets: Bool = false) -> [UIElementInfo] {
+        if includeSheets, let appName = inApp {
+            let sheets = findSheetElements(inApp: appName)
+            if !sheets.isEmpty {
+                return sheets.compactMap { buildElementTree($0, depth: 0, maxDepth: maxDepth) }
+            }
+        }
+        
         let apps: [AXUIElement]
         if let appName = inApp {
             apps = findAppElements(named: appName)

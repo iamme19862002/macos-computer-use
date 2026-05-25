@@ -11,6 +11,17 @@
 
 #### 命令
 - `cursor-position` - 获取当前鼠标光标位置
+
+#### 系统对话框支持
+- `element-list --sheet` - 支持列出系统对话框（Sheet）内的 UI 元素，如 NSOpenPanel/NSSavePanel
+- `element-click --sheet` - 支持点击系统对话框内的 UI 元素
+
+### 修复
+
+#### 系统对话框操作
+- 修复无法操作 NSOpenPanel/NSSavePanel 等系统文件选择器的问题
+- 新增 Sheet 元素检测能力，通过 `kAXSheetAttribute` 访问系统对话框
+- 支持在系统对话框中查找和点击按钮（如"打开"、"取消"、"前往文件夹"）
 - `screenshot-diff` - 对比两张截图的像素级差异，支持差异图输出
 - `pixel-color` - 读取指定坐标的像素颜色值（HEX/RGBA）
 - `text-select` - 选中文本或获取当前已选文本
