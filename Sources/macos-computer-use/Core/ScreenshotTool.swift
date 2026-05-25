@@ -56,6 +56,23 @@ struct CursorPosition {
 struct ScreenshotTool {
     static let screenshotDir = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".macos_computer_use/screenshots")
+    
+    static func findWindowId(forApp appName: String) -> UInt32? {
+        let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+        let lowercased = appName.lowercased()
+        
+        for window in windowList {
+            guard let ownerName = window[kCGWindowOwnerName as String] as? String,
+                  let windowId = window[kCGWindowNumber as String] as? UInt32 else {
+                continue
+            }
+            
+            if ownerName.lowercased() == lowercased || ownerName.lowercased().contains(lowercased) {
+                return windowId
+            }
+        }
+        return nil
+    }
 
     /// 截图并保存，返回 file:// URL
     static func capture(
