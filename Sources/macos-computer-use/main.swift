@@ -15,7 +15,7 @@ struct MacOSComputerUse: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "macos-computer-use",
         abstract: "macOS 通用计算机控制 CLI - 零 token 开销的 computer-use 工具",
-        version: "3.3.0",
+        version: "3.3.1",
         subcommands: [
             // 截图
             ScreenshotCommand.self,
