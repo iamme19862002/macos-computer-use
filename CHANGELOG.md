@@ -12,6 +12,10 @@
 #### 命令
 - `cursor-position` - 获取当前鼠标光标位置
 
+## [3.3.1] - 2026-05-25
+
+### 新增
+
 #### 系统对话框支持
 - `element-list --sheet` - 支持列出系统对话框（Sheet）内的 UI 元素，如 NSOpenPanel/NSSavePanel
 - `element-click --sheet` - 支持点击系统对话框内的 UI 元素
