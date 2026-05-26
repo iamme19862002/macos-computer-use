@@ -37,7 +37,7 @@ actor MCPServer {
     }
 
     func run() async {
-        log("MCP Server started (macos-computer-use v3.3.2)")
+        log("MCP Server started (macos-computer-use v\(AppVersion.current))")
         log("Protocol: JSON-RPC 2.0 over stdin/stdout")
 
         let stdin = FileHandle.standardInput
@@ -73,7 +73,7 @@ actor MCPServer {
                 ],
                 "serverInfo": [
                     "name": "macos-computer-use",
-                    "version": "3.3.2"
+                    "version": AppVersion.current
                 ]
             ])
 
