@@ -11,6 +11,41 @@
 
 #### 命令
 - `cursor-position` - 获取当前鼠标光标位置
+
+### 修复
+
+#### 截图功能
+- 修复 `--app` 参数截图不包含系统文件选择器（Sheet）的问题
+- 使用 `screencapture -l` 命令截取应用窗口及其附加的 Sheet/对话框
+- 新增 `findAllWindows()` 和 `captureAppWindows()` 方法支持应用级截图
+
+#### 元素查找
+- 修复 `element-find --title` 无法查找 SwiftUI 按钮的问题
+- 现在同时匹配 `title`、`value` 和 `description` 属性，提高查找成功率
+
+#### 命令增强
+- `element-click`、`element-find`、`element-list`、`menu-click` 命令添加自动聚焦功能
+- `key` 命令支持发送快捷键到指定进程（非全局）
+- `type` 命令改用剪贴板粘贴方式，避免中文路径输入乱码
+- `DialogOpenFileCommand` 实现完整的文件选择器自动选择文件功能
+
+#### KeyMap
+- 添加 `/` 字符映射，支持路径输入
+
+## [3.3.1] - 2026-05-25
+
+### 新增
+
+#### 系统对话框支持
+- `element-list --sheet` - 支持列出系统对话框（Sheet）内的 UI 元素，如 NSOpenPanel/NSSavePanel
+- `element-click --sheet` - 支持点击系统对话框内的 UI 元素
+
+### 修复
+
+#### 系统对话框操作
+- 修复无法操作 NSOpenPanel/NSSavePanel 等系统文件选择器的问题
+- 新增 Sheet 元素检测能力，通过 `kAXSheetAttribute` 访问系统对话框
+- 支持在系统对话框中查找和点击按钮（如"打开"、"取消"、"前往文件夹"）
 - `screenshot-diff` - 对比两张截图的像素级差异，支持差异图输出
 - `pixel-color` - 读取指定坐标的像素颜色值（HEX/RGBA）
 - `text-select` - 选中文本或获取当前已选文本

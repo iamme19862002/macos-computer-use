@@ -10,22 +10,22 @@
 import ArgumentParser
 import Foundation
 
-struct MenuClickCommand: ParsableCommand {
+struct MenuClickCommand: AsyncParsableCommand {
     static var configuration = CommandConfiguration(
         commandName: "menu-click",
-        abstract: "通过系统菜单栏操作"
+        abstract: "通过系统菜单栏操作，自动聚焦应用"
     )
 
     @Argument(help: "菜单路径，如 '文件,打开' 或 'Edit,Copy'")
     var path: String
 
-    @Option(name: .long, help: "目标应用名称（默认前台应用）")
+    @Option(name: .long, help: "目标应用名称（会自动激活应用，默认前台应用）")
     var app: String?
 
     @Flag(name: .shortAndLong, help: "JSON 输出")
     var json = false
 
-    func run() throws {
+    func run() async throws {
         let menuItems = path.split(separator: ",").map { String($0.trimmingCharacters(in: .whitespaces)) }
         guard menuItems.count >= 2 else {
             if json {
@@ -34,6 +34,21 @@ struct MenuClickCommand: ParsableCommand {
                 print("✗ 菜单路径需要至少两个层级，如 '文件,打开'")
             }
             throw ExitCode.failure
+        }
+
+        // 如果指定了应用，先激活它
+        if let appName = app {
+            let activateResult = AppManager.activate(appName: appName)
+            if !activateResult.success {
+                if json {
+                    printJSON(["success": false, "error": "无法激活应用: \(appName)"])
+                } else {
+                    print("✗ 无法激活应用: \(appName)")
+                }
+                throw ExitCode.failure
+            }
+            // 等待应用完全激活
+            try await Task.sleep(nanoseconds: 300_000_000)
         }
 
         let targetApp = app ?? ""

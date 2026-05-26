@@ -37,11 +37,10 @@ struct ScreenshotCommand: AsyncParsableCommand {
     var markElements = false
 
     func run() async throws {
-        var resolvedWindowId = windowId
-        
+        // 验证应用是否存在（如果指定了 --app）
         if let appName = app {
-            resolvedWindowId = ScreenshotTool.findWindowId(forApp: appName)
-            guard resolvedWindowId != nil else {
+            let windows = ScreenshotTool.findAllWindows(forApp: appName)
+            guard !windows.isEmpty else {
                 if json {
                     print("""
                     {
@@ -60,7 +59,8 @@ struct ScreenshotCommand: AsyncParsableCommand {
             outputDir: outputDir,
             filename: filename,
             region: region,
-            windowId: resolvedWindowId,
+            windowId: windowId,
+            appName: app,
             markElements: markElements
         )
 
@@ -76,8 +76,8 @@ struct ScreenshotCommand: AsyncParsableCommand {
                 if region != nil {
                     print("  Region: \(region!)")
                 }
-                if resolvedWindowId != nil {
-                    print("  Window ID: \(resolvedWindowId!)")
+                if app != nil {
+                    print("  App: \(app!)")
                 }
                 if markElements {
                     print("  Elements: marked")
