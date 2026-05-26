@@ -18,10 +18,21 @@
 - 修复 `--app` 参数截图不包含系统文件选择器（Sheet）的问题
 - 使用 `screencapture -l` 命令截取应用窗口及其附加的 Sheet/对话框
 - 新增 `findAllWindows()` 和 `captureAppWindows()` 方法支持应用级截图
+- **MCU-003**: 修复 `screenshot --app` 偶尔失败问题，增加重试机制（最多3次）和降级方案
 
 #### 元素查找
 - 修复 `element-find --title` 无法查找 SwiftUI 按钮的问题
 - 现在同时匹配 `title`、`value` 和 `description` 属性，提高查找成功率
+- **MCU-001**: `element-list` 默认同时列出主窗口和系统对话框（Sheet/Panel）元素
+- **MCU-001**: 移除 `--sheet` 参数，简化命令使用，自动检测所有 UI 元素
+- **MCU-001**: 新增 `findPanelElements()` 方法，通过窗口角色、子角色和标题识别系统面板/对话框
+- **MCU-001**: `getElementTree()` 合并返回主窗口、Sheet 和 Panel 的所有元素
+
+#### 系统对话框操作
+- **MCU-002**: 修复 `dialog-open-file` 无法识别已打开的文件选择器问题
+- **MCU-002**: 自动检测文件选择器状态，无需 `--force` 参数，简化命令使用
+- **MCU-002**: 新增 `isFileDialogOpen()` 检测方法，支持 Sheet、Panel 和 CGWindowList 三层检测
+- **MCU-002**: 优化 `countTextFieldsInSheetsAndPanels()` 同时统计 Sheet 和 Panel 中的文本输入框
 
 #### 命令增强
 - `element-click`、`element-find`、`element-list`、`menu-click` 命令添加自动聚焦功能

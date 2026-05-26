@@ -52,6 +52,48 @@ struct AccessibilityManager {
         return sheets
     }
     
+    static func findPanelElements(inApp appName: String) -> [AXUIElement] {
+        let apps = findAppElements(named: appName)
+        var panels: [AXUIElement] = []
+        
+        for app in apps {
+            var windows: CFTypeRef?
+            let result = AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windows)
+            
+            if result == .success, let windowArray = windows as? [AXUIElement] {
+                for window in windowArray {
+                    var role: CFTypeRef?
+                    let roleResult = AXUIElementCopyAttributeValue(window, kAXRoleAttribute as CFString, &role)
+                    if roleResult == .success, let roleStr = role as? String, roleStr == "AXSheet" {
+                        panels.append(window)
+                        continue
+                    }
+                    
+                    var subrole: CFTypeRef?
+                    let subroleResult = AXUIElementCopyAttributeValue(window, kAXSubroleAttribute as CFString, &subrole)
+                    if subroleResult == .success, let subroleStr = subrole as? String,
+                       subroleStr.contains("Dialog") || subroleStr.contains("Panel") {
+                        panels.append(window)
+                        continue
+                    }
+                    
+                    var title: CFTypeRef?
+                    let titleResult = AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &title)
+                    if titleResult == .success, let titleStr = title as? String {
+                        let lowerTitle = titleStr.lowercased()
+                        if lowerTitle.contains("打开") || lowerTitle.contains("open") ||
+                           lowerTitle.contains("保存") || lowerTitle.contains("save") ||
+                           lowerTitle.contains("选择") || lowerTitle.contains("choose") {
+                            panels.append(window)
+                        }
+                    }
+                }
+            }
+        }
+        
+        return panels
+    }
+    
     static func findElements(
         byRole: String? = nil,
         byTitle: String? = nil,
@@ -136,14 +178,7 @@ struct AccessibilityManager {
         )
     }
     
-    static func getElementTree(inApp: String? = nil, maxDepth: Int = 3, includeSheets: Bool = false) -> [UIElementInfo] {
-        if includeSheets, let appName = inApp {
-            let sheets = findSheetElements(inApp: appName)
-            if !sheets.isEmpty {
-                return sheets.compactMap { buildElementTree($0, depth: 0, maxDepth: maxDepth) }
-            }
-        }
-        
+    static func getElementTree(inApp: String? = nil, maxDepth: Int = 3) -> [UIElementInfo] {
         let apps: [AXUIElement]
         if let appName = inApp {
             apps = findAppElements(named: appName)
@@ -151,7 +186,22 @@ struct AccessibilityManager {
             apps = getAllAppElements()
         }
         
-        return apps.compactMap { buildElementTree($0, depth: 0, maxDepth: maxDepth) }
+        // 1. 首先获取应用主窗口的元素树
+        var allTrees: [UIElementInfo] = apps.compactMap { buildElementTree($0, depth: 0, maxDepth: maxDepth) }
+        
+        // 2. 如果指定了应用，同时查找 Sheet/Panel（系统对话框）
+        if let appName = inApp {
+            let sheets = findSheetElements(inApp: appName)
+            let panels = findPanelElements(inApp: appName)
+            
+            let sheetTrees = sheets.compactMap { buildElementTree($0, depth: 0, maxDepth: maxDepth) }
+            let panelTrees = panels.compactMap { buildElementTree($0, depth: 0, maxDepth: maxDepth) }
+            
+            allTrees.append(contentsOf: sheetTrees)
+            allTrees.append(contentsOf: panelTrees)
+        }
+        
+        return allTrees
     }
     
     static func getFocusedElement() -> (element: AXUIElement, info: UIElementInfo)? {

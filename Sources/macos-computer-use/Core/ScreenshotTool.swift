@@ -225,7 +225,51 @@ struct ScreenshotTool {
         guard let mainWindowId = mainWindow?.windowId else { return nil }
         
         // 2. 使用 screencapture -l 截取主窗口及其附加的 Sheet/对话框
-        return captureWithScreencapture(windowId: mainWindowId)
+        // 增加重试机制（最多3次），处理窗口状态变化导致的截图失败
+        var lastError: String?
+        for attempt in 1...3 {
+            if let image = captureWithScreencapture(windowId: mainWindowId) {
+                return image
+            }
+            
+            // 获取更详细的错误信息
+            let tmpPath = "/tmp/mcu_retry_\(UUID().uuidString).png"
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+            process.arguments = ["-x", "-C", "-l", String(mainWindowId), tmpPath]
+            
+            let pipe = Pipe()
+            process.standardError = pipe
+            
+            do {
+                try process.run()
+                process.waitUntilExit()
+                if process.terminationStatus != 0 {
+                    let errorData = pipe.fileHandleForReading.readDataToEndOfFile()
+                    lastError = String(data: errorData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            } catch {
+                lastError = error.localizedDescription
+            }
+            
+            // 等待一小段时间让窗口状态稳定
+            if attempt < 3 {
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+        }
+        
+        // 3. 如果 screencapture 多次失败，回退到全屏截图+裁剪
+        if let unionBounds = unionBounds(windows), !unionBounds.isEmpty {
+            let region = "\(Int(unionBounds.origin.x)),\(Int(unionBounds.origin.y)),\(Int(unionBounds.width)),\(Int(unionBounds.height))"
+            if let fallbackImage = captureWithScreencapture(region: region) {
+                return fallbackImage
+            }
+        }
+        
+        // 4. 最后回退到全屏截图
+        let errorMsg = lastError ?? "could not create image from window"
+        print("Screenshot retry failed: \(errorMsg), falling back to full screen capture")
+        return captureWithScreencapture()
     }
 
     private static func captureScreen(region: String? = nil, windowId: UInt32? = nil) -> CGImage? {
