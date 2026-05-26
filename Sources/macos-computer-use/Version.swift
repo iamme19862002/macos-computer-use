@@ -14,7 +14,7 @@ import Foundation
 enum AppVersion {
     /// 当前版本号
     /// 格式: 主版本号.次版本号.修订号
-    static let current = "3.3.2"
+    static let current = "3.3.3"
     
     /// 主版本号
     static let major = 3
@@ -23,5 +23,5 @@ enum AppVersion {
     static let minor = 3
     
     /// 修订号
-    static let patch = 2
+    static let patch = 3
 }
