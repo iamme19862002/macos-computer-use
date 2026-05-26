@@ -2,7 +2,8 @@
 .DS_Store
 .AppleDouble
 .LSOverride
-Icon
+Icon
+
 ._*
 .DocumentRevisions-V100
 .fseventsd
@@ -250,3 +251,6 @@ terraform.tfvars
 
 # Local development only (not for git)
 .local-dev/
+
+# Local issues directory (testing records, not for git)
+issues/

@@ -10,6 +10,10 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import ApplicationServices
+
+// Sheet attribute for accessing system dialogs (NSOpenPanel/NSSavePanel)
+let kAXSheetAttribute = "AXSheet"
 
 struct UIElementInfo: Codable {
     let role: String
@@ -24,6 +28,29 @@ struct UIElementInfo: Codable {
 }
 
 struct AccessibilityManager {
+    
+    static func findSheetElements(inApp appName: String) -> [AXUIElement] {
+        let apps = findAppElements(named: appName)
+        var sheets: [AXUIElement] = []
+        
+        for app in apps {
+            var windows: CFTypeRef?
+            let result = AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windows)
+            
+            if result == .success, let windowArray = windows as? [AXUIElement] {
+                for window in windowArray {
+                    var sheet: CFTypeRef?
+                    let sheetResult = AXUIElementCopyAttributeValue(window, kAXSheetAttribute as CFString, &sheet)
+                    
+                    if sheetResult == .success, let sheetElement = sheet {
+                        sheets.append(sheetElement as! AXUIElement)
+                    }
+                }
+            }
+        }
+        
+        return sheets
+    }
     
     static func findElements(
         byRole: String? = nil,
@@ -109,7 +136,14 @@ struct AccessibilityManager {
         )
     }
     
-    static func getElementTree(inApp: String? = nil, maxDepth: Int = 3) -> [UIElementInfo] {
+    static func getElementTree(inApp: String? = nil, maxDepth: Int = 3, includeSheets: Bool = false) -> [UIElementInfo] {
+        if includeSheets, let appName = inApp {
+            let sheets = findSheetElements(inApp: appName)
+            if !sheets.isEmpty {
+                return sheets.compactMap { buildElementTree($0, depth: 0, maxDepth: maxDepth) }
+            }
+        }
+        
         let apps: [AXUIElement]
         if let appName = inApp {
             apps = findAppElements(named: appName)
@@ -158,7 +192,7 @@ struct AccessibilityManager {
         }
     }
     
-    private static func findAppElements(named: String) -> [AXUIElement] {
+    static func findAppElements(named: String) -> [AXUIElement] {
         let workspace = NSWorkspace.shared
         let lowercased = named.lowercased()
         
@@ -200,9 +234,15 @@ struct AccessibilityManager {
                 match = false
             }
             if let title = byTitle {
-                let infoTitle = info.title
-                let searchTitle = title
-                let isMatch = infoTitle.range(of: searchTitle, options: .caseInsensitive) != nil
+                let searchTitle = title.lowercased()
+                // 同时匹配 title、value 和 description，提高查找成功率
+                let infoTitle = info.title.lowercased()
+                let infoValue = info.value?.lowercased() ?? ""
+                let infoDescription = info.description?.lowercased() ?? ""
+                
+                let isMatch = infoTitle.contains(searchTitle) || 
+                             infoValue.contains(searchTitle) || 
+                             infoDescription.contains(searchTitle)
                 if !isMatch {
                     match = false
                 }
