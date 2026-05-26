@@ -13,7 +13,7 @@ import ApplicationServices
 struct ElementClickCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "element-click",
-        abstract: "点击 UI 元素，支持系统对话框 (Sheet) 内的元素"
+        abstract: "点击 UI 元素，支持系统对话框 (Sheet) 内的元素，自动聚焦应用"
     )
 
     @Option(name: .long, help: "按角色查找")
@@ -25,7 +25,7 @@ struct ElementClickCommand: AsyncParsableCommand {
     @Option(name: .long, help: "按标识符查找")
     var identifier: String?
 
-    @Option(name: .long, help: "在指定应用中查找")
+    @Option(name: .long, help: "在指定应用中查找（会自动激活应用）")
     var app: String?
 
     @Flag(name: .long, help: "在系统对话框 (Sheet) 中查找")
@@ -35,6 +35,26 @@ struct ElementClickCommand: AsyncParsableCommand {
     var json = false
 
     func run() async throws {
+        // 如果指定了应用，先激活应用
+        if let appName = app {
+            let activateResult = AppManager.activate(appName: appName)
+            if !activateResult.success {
+                if json {
+                    print("""
+                    {
+                      "success": false,
+                      "message": "Failed to activate app: \(appName)"
+                    }
+                    """)
+                } else {
+                    print("✗ Failed to activate app: \(appName)")
+                }
+                return
+            }
+            // 等待应用完全激活
+            try await Task.sleep(nanoseconds: 500_000_000)
+        }
+
         let results: [(element: AXUIElement, info: UIElementInfo)]
         
         if sheet, let appName = app {

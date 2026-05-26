@@ -73,6 +73,42 @@ struct ScreenshotTool {
         }
         return nil
     }
+    
+    /// 查找应用的所有窗口（包括主窗口和 Sheet/对话框）
+    static func findAllWindows(forApp appName: String) -> [(windowId: UInt32, bounds: CGRect)] {
+        let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+        let lowercased = appName.lowercased()
+        var result: [(UInt32, CGRect)] = []
+        
+        for window in windowList {
+            guard let ownerName = window[kCGWindowOwnerName as String] as? String,
+                  let windowId = window[kCGWindowNumber as String] as? UInt32,
+                  let bounds = window[kCGWindowBounds as String] as? [String: CGFloat],
+                  let x = bounds["X"],
+                  let y = bounds["Y"],
+                  let width = bounds["Width"],
+                  let height = bounds["Height"] else {
+                continue
+            }
+            
+            if ownerName.lowercased() == lowercased || ownerName.lowercased().contains(lowercased) {
+                let rect = CGRect(x: x, y: y, width: width, height: height)
+                result.append((windowId, rect))
+            }
+        }
+        return result
+    }
+    
+    /// 计算多个窗口的并集区域
+    static func unionBounds(_ windows: [(windowId: UInt32, bounds: CGRect)]) -> CGRect? {
+        guard !windows.isEmpty else { return nil }
+        
+        var unionRect = windows[0].bounds
+        for i in 1..<windows.count {
+            unionRect = unionRect.union(windows[i].bounds)
+        }
+        return unionRect
+    }
 
     /// 截图并保存，返回 file:// URL
     static func capture(
@@ -80,13 +116,23 @@ struct ScreenshotTool {
         filename: String? = nil,
         region: String? = nil,
         windowId: UInt32? = nil,
+        appName: String? = nil,
         markElements: Bool = false
     ) -> ScreenshotResult {
         // 1. 获取光标位置
         let cursorPos = MouseController.currentPosition()
 
         // 2. 捕获屏幕（多策略回退）
-        guard var image = captureScreen(region: region, windowId: windowId) ?? captureWithScreencapture(region: region, windowId: windowId) else {
+        var image: CGImage?
+        
+        if let appName = appName {
+            // 应用级截图：截取应用的所有窗口（包括主窗口和 Sheet/对话框）
+            image = captureAppWindows(appName: appName)
+        } else {
+            image = captureScreen(region: region, windowId: windowId) ?? captureWithScreencapture(region: region, windowId: windowId)
+        }
+        
+        guard var image = image else {
             return ScreenshotResult(
                 success: false,
                 url: "",
@@ -162,6 +208,26 @@ struct ScreenshotTool {
         )
     }
 
+    /// 截取应用的所有窗口（包括主窗口和 Sheet/对话框）
+    /// 使用 screencapture -l 命令，它会自动包含附加到主窗口的 Sheet/对话框
+    private static func captureAppWindows(appName: String) -> CGImage? {
+        // 1. 获取应用的主窗口（最底层的窗口）
+        let windows = findAllWindows(forApp: appName)
+        guard !windows.isEmpty else { return nil }
+        
+        // 找到最底层的窗口（Y 坐标最大 + 高度最大的通常是主窗口）
+        let mainWindow = windows.max { a, b in
+            let aBottom = a.bounds.origin.y + a.bounds.height
+            let bBottom = b.bounds.origin.y + b.bounds.height
+            return aBottom < bBottom
+        }
+        
+        guard let mainWindowId = mainWindow?.windowId else { return nil }
+        
+        // 2. 使用 screencapture -l 截取主窗口及其附加的 Sheet/对话框
+        return captureWithScreencapture(windowId: mainWindowId)
+    }
+
     private static func captureScreen(region: String? = nil, windowId: UInt32? = nil) -> CGImage? {
         if let windowId = windowId {
             // 截取指定窗口
@@ -195,7 +261,8 @@ struct ScreenshotTool {
 
         var args = ["-x", "-C"]
         if let windowId = windowId {
-            args.append("-w")
+            // 使用 -l 参数截取指定窗口及其附加的 Sheet/对话框
+            args.append("-l")
             args.append(String(windowId))
         } else if let region = region {
             args.append("-R")

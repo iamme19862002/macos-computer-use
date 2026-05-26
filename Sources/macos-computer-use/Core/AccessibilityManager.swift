@@ -192,7 +192,7 @@ struct AccessibilityManager {
         }
     }
     
-    private static func findAppElements(named: String) -> [AXUIElement] {
+    static func findAppElements(named: String) -> [AXUIElement] {
         let workspace = NSWorkspace.shared
         let lowercased = named.lowercased()
         
@@ -234,9 +234,15 @@ struct AccessibilityManager {
                 match = false
             }
             if let title = byTitle {
-                let infoTitle = info.title
-                let searchTitle = title
-                let isMatch = infoTitle.range(of: searchTitle, options: .caseInsensitive) != nil
+                let searchTitle = title.lowercased()
+                // 同时匹配 title、value 和 description，提高查找成功率
+                let infoTitle = info.title.lowercased()
+                let infoValue = info.value?.lowercased() ?? ""
+                let infoDescription = info.description?.lowercased() ?? ""
+                
+                let isMatch = infoTitle.contains(searchTitle) || 
+                             infoValue.contains(searchTitle) || 
+                             infoDescription.contains(searchTitle)
                 if !isMatch {
                     match = false
                 }

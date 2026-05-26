@@ -60,11 +60,17 @@ struct KeyMap {
         "8": 0x1C, "9": 0x19,
 
         // Punctuation
-        "minus": 0x1B, "equal": 0x18,
-        "bracketleft": 0x21, "bracketright": 0x1E,
-        "backslash": 0x2A, "semicolon": 0x29,
-        "quote": 0x27, "grave": 0x32,
-        "comma": 0x2B, "period": 0x2F, "slash": 0x2C,
+        "minus": 0x1B, "-": 0x1B,
+        "equal": 0x18, "=": 0x18,
+        "bracketleft": 0x21, "[": 0x21,
+        "bracketright": 0x1E, "]": 0x1E,
+        "backslash": 0x2A, "\\": 0x2A,
+        "semicolon": 0x29, ";": 0x29,
+        "quote": 0x27, "'": 0x27,
+        "grave": 0x32, "`": 0x32,
+        "comma": 0x2B, ",": 0x2B,
+        "period": 0x2F, ".": 0x2F,
+        "slash": 0x2C, "/": 0x2C,
     ]
 
     static func cgKeyCode(for key: String) -> CGKeyCode? {
