@@ -5,6 +5,42 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 并且本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/spec/v2.0.0.html)。
 
+## [3.3.3] - 2026-05-26
+
+### 修复
+
+#### 截图功能 (MCU-003)
+- 修复 `screenshot --app` 偶尔失败问题
+- 增加重试机制（最多3次），每次间隔 0.5 秒
+- 新增错误信息收集，输出详细失败原因
+- 降级方案1：使用窗口并集区域截图
+- 降级方案2：回退到全屏截图
+
+#### 元素查找 (MCU-001)
+- `element-list` 默认同时列出主窗口和系统对话框（Sheet/Panel）元素
+- 移除 `--sheet` 参数，简化命令使用，自动检测所有 UI 元素
+- 新增 `findPanelElements()` 方法，通过窗口角色、子角色和标题识别系统面板/对话框
+- `getElementTree()` 合并返回主窗口、Sheet 和 Panel 的所有元素
+- 同时支持传统 AppKit Sheet 和现代 SwiftUI Panel 两种模式
+
+#### 系统对话框操作 (MCU-002)
+- 修复 `dialog-open-file` 无法识别已打开的文件选择器问题
+- 自动检测文件选择器状态，无需 `--force` 参数，简化命令使用
+- 已打开：直接输入文件路径并选择
+- 未打开：自动发送 Cmd+Shift+G 打开「前往文件夹」对话框
+- 新增 `isFileDialogOpen()` 检测方法，支持 Sheet、Panel 和 CGWindowList 三层检测
+- 优化 `countTextFieldsInSheetsAndPanels()` 同时统计 Sheet 和 Panel 中的文本输入框
+
+### 文档
+- 更新 `docs/命令参考手册.md`，移除 `--sheet` 参数相关说明
+- 更新 `dialog-open-file` 文档，说明自动检测功能
+- 版本号更新至 3.3.3
+
+## [3.3.2] - 2026-05-26
+
+### 修复
+- 版本号统一管理，通过 `Version.swift` 集中管理版本号
+
 ## [未发布]
 
 ### 新增

@@ -13,7 +13,7 @@ import Foundation
 struct ElementListCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "element-list",
-        abstract: "列出应用的 UI 元素树，支持系统对话框 (Sheet)，自动聚焦应用"
+        abstract: "列出应用的 UI 元素树，自动包含主窗口和系统对话框（Sheet/Panel）"
     )
 
     @Option(name: .long, help: "指定应用名称（会自动激活应用）")
@@ -21,9 +21,6 @@ struct ElementListCommand: AsyncParsableCommand {
 
     @Option(name: .long, help: "最大深度 (默认: 10，SwiftUI 应用需要更大深度)")
     var depth: Int?
-
-    @Flag(name: .long, help: "包含系统对话框 (Sheet) 元素")
-    var sheet = false
 
     @Flag(name: .shortAndLong, help: "JSON 输出")
     var json = false
@@ -50,7 +47,7 @@ struct ElementListCommand: AsyncParsableCommand {
         }
 
         let maxDepth = depth ?? 10
-        let tree = AccessibilityManager.getElementTree(inApp: app, maxDepth: maxDepth, includeSheets: sheet)
+        let tree = AccessibilityManager.getElementTree(inApp: app, maxDepth: maxDepth)
 
         if json {
             let encoder = JSONEncoder()
@@ -58,8 +55,7 @@ struct ElementListCommand: AsyncParsableCommand {
             let data = try encoder.encode(tree)
             print(String(data: data, encoding: .utf8)!)
         } else {
-            let source = sheet ? "Sheet" : "UI Element"
-            print("\(source) Tree (depth: \(maxDepth)):")
+            print("UI Element Tree (depth: \(maxDepth)):")
             for (index, root) in tree.enumerated() {
                 printElement(root, prefix: "  [\(index)]", depth: 0, maxDepth: maxDepth)
             }
