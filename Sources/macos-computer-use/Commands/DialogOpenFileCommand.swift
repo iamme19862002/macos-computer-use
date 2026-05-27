@@ -10,6 +10,7 @@
 import ArgumentParser
 import Foundation
 import ApplicationServices
+import AppKit
 
 struct DialogOpenFileCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -30,8 +31,7 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
     var timeout: Int = 5
 
     func run() async throws {
-        let fileDialogAlreadyOpen = isFileDialogOpen()
-
+        // 1. 激活应用
         let activateResult = AppManager.activate(appName: app)
         if !activateResult.success {
             printResult(success: false, message: "无法激活应用: \(app)")
@@ -43,39 +43,48 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         _ = AppManager.activate(appName: app)
         try await Task.sleep(nanoseconds: 300_000_000)
 
-        // 如果文件选择器未打开，先发送 Cmd+Shift+G 打开「前往文件夹」对话框
-        if !fileDialogAlreadyOpen {
-            let shortcutSent = sendGoToFolderShortcut(appName: app)
-            if !shortcutSent {
-                printResult(success: false, message: "无法发送「前往文件夹」快捷键")
-                return
-            }
+        // 2. 检测文件选择器是否已打开（在应用激活后检测）
+        let fileDialogAlreadyOpen = isFileDialogOpen()
 
-            let goToFolderAppeared = await waitForGoToFolderDialog(timeout: timeout)
-            if !goToFolderAppeared {
-                printResult(success: false, message: "「前往文件夹」对话框未出现")
-                return
-            }
+        // 3. 发送 Cmd+Shift+G 打开「前往文件夹」对话框
+        // 无论文件选择器是否已打开，都需要打开「前往文件夹」对话框来输入路径
+        let shortcutSent = sendGoToFolderShortcut(appName: app)
+        if !shortcutSent {
+            printResult(success: false, message: "无法发送「前往文件夹」快捷键")
+            return
         }
 
-        // 输入文件路径
-        let textSent = sendTextToProcess(appName: app, text: path)
-        if !textSent {
-            KeyboardController.typeText(path)
+        let goToFolderAppeared = await waitForGoToFolderDialog(timeout: timeout)
+        if !goToFolderAppeared {
+            printResult(success: false, message: "「前往文件夹」对话框未出现")
+            return
+        }
+
+        // 4. 等待对话框完全出现
+        try await Task.sleep(nanoseconds: 500_000_000)
+
+        // 5. 输入文件路径（使用剪贴板粘贴确保中文路径正确）
+        let pasteSuccess = pasteTextToProcess(appName: app, text: path)
+        if !pasteSuccess {
+            // 降级方案：直接输入
+            let textSent = sendTextToProcess(appName: app, text: path)
+            if !textSent {
+                KeyboardController.typeText(path)
+            }
         }
 
         try await Task.sleep(nanoseconds: 500_000_000)
 
-        // 按回车确认路径
+        // 6. 按回车确认路径
         sendKeyToProcess(appName: app, key: "return")
 
-        // 等待文件选择器跳转到目标文件夹
+        // 7. 等待文件选择器跳转到目标文件夹
         try await Task.sleep(nanoseconds: 1_500_000_000)
 
-        // 再次按回车确认选择文件
+        // 8. 再次按回车确认选择文件
         sendKeyToProcess(appName: app, key: "return")
 
-        // 最终验证：检查文件选择器是否关闭
+        // 9. 最终验证：检查文件选择器是否关闭
         try await Task.sleep(nanoseconds: 500_000_000)
         let fileDialogClosed = await verifyFileDialogClosed()
 
@@ -117,6 +126,7 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
     }
 
     private func sendGoToFolderShortcut(appName: String) -> Bool {
+        // 方法1: 使用 AppleScript 发送快捷键
         let escapedAppName = appName.replacingOccurrences(of: "\"", with: "\\\"")
         let script = """
         tell application "System Events"
@@ -138,10 +148,40 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         do {
             try task.run()
             task.waitUntilExit()
-            return task.terminationStatus == 0
+            if task.terminationStatus == 0 {
+                return true
+            }
         } catch {
+            // 失败时尝试方法2
+        }
+
+        // 方法2: 使用 CGEvent 发送快捷键
+        return sendGoToFolderShortcutViaCGEvent()
+    }
+
+    private func sendGoToFolderShortcutViaCGEvent() -> Bool {
+        // 发送 Command+Shift+G
+        let keyG: CGKeyCode = 5  // 'g' key
+        let commandKey: CGEventFlags = .maskCommand
+        let shiftKey: CGEventFlags = .maskShift
+
+        // 创建按键按下事件
+        guard let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: keyG, keyDown: true) else {
             return false
         }
+        keyDown.flags = [commandKey, shiftKey]
+
+        // 创建按键释放事件
+        guard let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: keyG, keyDown: false) else {
+            return false
+        }
+        keyUp.flags = []
+
+        // 发送事件
+        keyDown.post(tap: .cghidEventTap)
+        keyUp.post(tap: .cghidEventTap)
+
+        return true
     }
 
     private func sendTextToProcess(appName: String, text: String) -> Bool {
@@ -151,6 +191,40 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         tell application "System Events"
             tell process "\(escapedAppName)"
                 keystroke "\(escapedText)"
+            end tell
+        end tell
+        """
+
+        let task = Process()
+        task.launchPath = "/usr/bin/osascript"
+        task.arguments = ["-e", script]
+
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = pipe
+
+        do {
+            try task.run()
+            task.waitUntilExit()
+            return task.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+
+    private func pasteTextToProcess(appName: String, text: String) -> Bool {
+        // 使用剪贴板粘贴，确保中文路径正确输入
+        let escapedAppName = appName.replacingOccurrences(of: "\"", with: "\\\"")
+
+        // 先将文本复制到剪贴板
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+
+        // 使用 AppleScript 粘贴
+        let script = """
+        tell application "System Events"
+            tell process "\(escapedAppName)"
+                keystroke "v" using {command down}
             end tell
         end tell
         """
@@ -213,23 +287,53 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         let initialTextFieldCount = countTextFieldsInSheetsAndPanels()
 
         while Date().timeIntervalSince(startTime) < Double(timeout) {
+            // 方法1: 检测窗口标题
             if let windowList = getWindowList() {
                 for window in windowList {
                     if let title = window["title"] as? String {
                         if title.contains("前往") || title.contains("Go To") ||
-                           title.contains("Go to") || title.contains("转到") {
+                           title.contains("Go to") || title.contains("转到") ||
+                           title.contains("前往文件夹") || title.contains("Go to Folder") {
                             return true
                         }
                     }
                 }
             }
 
+            // 方法2: 检测文本输入框数量增加（「前往文件夹」对话框包含文本输入框）
             let currentTextFieldCount = countTextFieldsInSheetsAndPanels()
             if currentTextFieldCount > initialTextFieldCount {
                 return true
             }
 
+            // 方法3: 直接检测是否有可编辑的文本框出现
+            if hasEditableTextFieldInForeground() {
+                return true
+            }
+
             try? await Task.sleep(nanoseconds: 200_000_000)
+        }
+        return false
+    }
+
+    private func hasEditableTextFieldInForeground() -> Bool {
+        let appElements = AccessibilityManager.findAppElements(named: app)
+        guard !appElements.isEmpty else {
+            return false
+        }
+
+        for appElement in appElements {
+            var focusedElement: CFTypeRef?
+            let result = AXUIElementCopyAttributeValue(appElement, kAXFocusedUIElementAttribute as CFString, &focusedElement)
+            if result == .success, let element = focusedElement as! AXUIElement? {
+                var role: CFTypeRef?
+                if AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role) == .success,
+                   let roleStr = role as? String {
+                    if roleStr == "AXTextField" || roleStr == "AXComboBox" {
+                        return true
+                    }
+                }
+            }
         }
         return false
     }
