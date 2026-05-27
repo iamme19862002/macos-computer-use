@@ -24,6 +24,9 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
     @Option(name: .long, help: "要选择的文件完整路径")
     var path: String
 
+    @Option(name: .long, help: "点击按钮打开文件选择器（按钮标题，如：添加文件）")
+    var button: String?
+
     @Flag(name: .shortAndLong, help: "JSON 输出")
     var json = false
 
@@ -43,10 +46,28 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         _ = AppManager.activate(appName: app)
         try await Task.sleep(nanoseconds: 300_000_000)
 
-        // 2. 检测文件选择器是否已打开（在应用激活后检测）
+        // 2. 如果指定了按钮，先点击按钮打开文件选择器
+        if let buttonTitle = button {
+            let buttonClicked = clickButton(title: buttonTitle)
+            if !buttonClicked {
+                printResult(success: false, message: "无法点击按钮: \(buttonTitle)")
+                return
+            }
+
+            // 等待文件选择器出现
+            let fileDialogAppeared = await waitForFileDialog(timeout: timeout)
+            if !fileDialogAppeared {
+                printResult(success: false, message: "文件选择器未出现")
+                return
+            }
+
+            try await Task.sleep(nanoseconds: 500_000_000)
+        }
+
+        // 3. 检测文件选择器是否已打开（在应用激活后检测）
         let fileDialogAlreadyOpen = isFileDialogOpen()
 
-        // 3. 发送 Cmd+Shift+G 打开「前往文件夹」对话框
+        // 4. 发送 Cmd+Shift+G 打开「前往文件夹」对话框
         // 无论文件选择器是否已打开，都需要打开「前往文件夹」对话框来输入路径
         let shortcutSent = sendGoToFolderShortcut(appName: app)
         if !shortcutSent {
@@ -54,16 +75,13 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
             return
         }
 
-        let goToFolderAppeared = await waitForGoToFolderDialog(timeout: timeout)
-        if !goToFolderAppeared {
-            printResult(success: false, message: "「前往文件夹」对话框未出现")
-            return
-        }
+        // 4. 等待「前往文件夹」对话框出现（不强制要求，因为有些应用不显示标题）
+        _ = await waitForGoToFolderDialog(timeout: 2)
 
-        // 4. 等待对话框完全出现
-        try await Task.sleep(nanoseconds: 500_000_000)
+        // 5. 等待对话框完全出现并确保焦点在文本输入框
+        try await Task.sleep(nanoseconds: 1_000_000_000)
 
-        // 5. 输入文件路径（使用剪贴板粘贴确保中文路径正确）
+        // 6. 输入文件路径（使用剪贴板粘贴确保中文路径正确）
         let pasteSuccess = pasteTextToProcess(appName: app, text: path)
         if !pasteSuccess {
             // 降级方案：直接输入
@@ -75,7 +93,7 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
 
         try await Task.sleep(nanoseconds: 500_000_000)
 
-        // 6. 按回车确认路径
+        // 7. 按回车确认路径
         sendKeyToProcess(appName: app, key: "return")
 
         // 7. 等待文件选择器跳转到目标文件夹
@@ -93,6 +111,47 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         } else {
             printResult(success: false, message: "文件选择可能未完成，对话框未关闭")
         }
+    }
+
+    private func clickButton(title: String) -> Bool {
+        // 使用 AccessibilityManager.findElements 查找按钮（同时匹配 title、value、description）
+        let results = AccessibilityManager.findElements(
+            byRole: "button",
+            byTitle: title,
+            inApp: app
+        )
+        
+        guard let firstButton = results.first else {
+            return false
+        }
+        
+        return AccessibilityManager.clickElement(firstButton.element)
+    }
+
+    private func waitForFileDialog(timeout: Int) async -> Bool {
+        let startTime = Date()
+        let checkInterval: UInt64 = 300_000_000  // 300ms
+        
+        while Date().timeIntervalSince(startTime) < Double(timeout) {
+            // 检查文件选择器是否打开
+            if isFileDialogOpen() {
+                return true
+            }
+            
+            // 检查是否有新的 Panel 或 Sheet 出现
+            let panels = AccessibilityManager.findPanelElements(inApp: app)
+            if !panels.isEmpty {
+                return true
+            }
+            
+            let sheets = AccessibilityManager.findSheetElements(inApp: app)
+            if !sheets.isEmpty {
+                return true
+            }
+            
+            try? await Task.sleep(nanoseconds: checkInterval)
+        }
+        return false
     }
 
     private func isFileDialogOpen() -> Bool {
