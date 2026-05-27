@@ -77,24 +77,40 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         // 3. 检测文件选择器是否已打开（支持文件选择器已打开或未打开的情况）
         _ = isFileDialogOpen()
 
-        // 4. 发送 Cmd+Shift+G 打开「前往文件夹」对话框
-        // 无论文件选择器是否已打开，都需要打开「前往文件夹」对话框来输入路径
+        // 4. 检查「前往文件夹」是否已打开，如果已打开则先 ESC 退出
+        // 先激活应用，确保能正确查找到元素
+        _ = AppManager.activate(appName: app)
+        try await Task.sleep(nanoseconds: 300_000_000)
+        
+        // 检查「前往文件夹」是否已打开：查找在 sheet/dialog 中的 textfield
+        let goToFolderOpen = isGoToFolderOpen(appName: app)
+        if goToFolderOpen {
+            // 「前往文件夹」已打开，先 ESC 退出
+            printResult(success: true, message: "检测到「前往文件夹」已打开，先 ESC 退出")
+            sendKeyToProcess(appName: app, key: "esc")
+            try await Task.sleep(nanoseconds: 500_000_000)
+        }
+
+        // 5. 发送 Cmd+Shift+G 打开「前往文件夹」对话框
         let shortcutSent = sendGoToFolderShortcut(appName: app)
         if !shortcutSent {
             printResult(success: false, message: "无法发送「前往文件夹」快捷键")
             return
         }
 
-        // 5. 等待「前往文件夹」输入框出现并确保聚焦
+        // 6. 等待「前往文件夹」输入框出现并确保聚焦
         let inputBoxReady = await waitForInputBoxAndFocus(timeout: timeout)
         if !inputBoxReady {
             printResult(success: false, message: "路径输入框未就绪")
             return
         }
 
-        // 6. 输入文件路径
-        // 使用 clearAndInputPath 方法，它会自动清空并输入新路径
-        let inputSuccess = clearAndInputPath(appName: app, path: path)
+        // 7. 输入文件路径
+        inputPathUsingPaste(appName: app, path: path)
+        try await Task.sleep(nanoseconds: 500_000_000)
+        
+        // 验证输入是否成功
+        let inputSuccess = verifyInputValue(appName: app, expectedValue: path)
         if !inputSuccess {
             printResult(success: false, message: "路径输入失败：无法将路径输入到文件选择器")
             return
@@ -219,6 +235,68 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         return false
     }
 
+    private func isGoToFolderOpen(appName: String) -> Bool {
+        // 检查「前往文件夹」是否已打开
+        // 「前往文件夹」是一个独立的 sheet/dialog，里面包含一个 textfield
+        // 与文件选择器中的文件列表 textfield 不同
+        
+        // 方法1: 查找独立的 sheet（不是文件选择器的子元素）
+        let sheetResults = AccessibilityManager.findElements(byRole: "sheet", inApp: appName)
+        for sheet in sheetResults {
+            // 检查这个 sheet 是否是文件选择器的子元素
+            var parentValue: CFTypeRef?
+            let parentResult = AXUIElementCopyAttributeValue(sheet.element, kAXParentAttribute as CFString, &parentValue)
+            
+            // 获取 sheet 的子元素
+            var childrenValue: CFTypeRef?
+            let childrenResult = AXUIElementCopyAttributeValue(sheet.element, kAXChildrenAttribute as CFString, &childrenValue)
+            
+            if childrenResult == .success, let children = childrenValue as? [AXUIElement] {
+                for child in children {
+                    var roleValue: CFTypeRef?
+                    AXUIElementCopyAttributeValue(child, kAXRoleAttribute as CFString, &roleValue)
+                    if let role = roleValue as? String, role == "AXTextField" {
+                        // 检查这个 textfield 是否是「前往文件夹」的输入框
+                        // 「前往文件夹」的输入框通常有特定的特征
+                        var titleValue: CFTypeRef?
+                        AXUIElementCopyAttributeValue(child, kAXTitleAttribute as CFString, &titleValue)
+                        let title = (titleValue as? String) ?? ""
+                        
+                        // 如果 title 为空，可能是「前往文件夹」的输入框
+                        if title.isEmpty {
+                            return true
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 方法2: 查找独立的 dialog
+        let dialogResults = AccessibilityManager.findElements(byRole: "dialog", inApp: appName)
+        for dialog in dialogResults {
+            var childrenValue: CFTypeRef?
+            let childrenResult = AXUIElementCopyAttributeValue(dialog.element, kAXChildrenAttribute as CFString, &childrenValue)
+            
+            if childrenResult == .success, let children = childrenValue as? [AXUIElement] {
+                for child in children {
+                    var roleValue: CFTypeRef?
+                    AXUIElementCopyAttributeValue(child, kAXRoleAttribute as CFString, &roleValue)
+                    if let role = roleValue as? String, role == "AXTextField" {
+                        var titleValue: CFTypeRef?
+                        AXUIElementCopyAttributeValue(child, kAXTitleAttribute as CFString, &titleValue)
+                        let title = (titleValue as? String) ?? ""
+                        
+                        if title.isEmpty {
+                            return true
+                        }
+                    }
+                }
+            }
+        }
+        
+        return false
+    }
+
     private func sendGoToFolderShortcut(appName: String) -> Bool {
         // 方法1: 使用 AppleScript 发送快捷键
         let escapedAppName = appName.replacingOccurrences(of: "\"", with: "\\\"")
@@ -279,82 +357,225 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
     }
 
     private func clearAndInputPath(appName: String, path: String) -> Bool {
-        // 步骤1: 尝试点击清空按钮
-        if clickClearButton(appName: appName) {
-            // 等待清空生效
+        // 方法1: ESC退出 + Cmd+Shift+G重新打开（自动全选）+ 粘贴
+        if escAndReopenThenInput(appName: appName, path: path) {
             Thread.sleep(forTimeInterval: 0.3)
-            
-            // 验证是否清空成功
-            if isInputBoxEmpty(appName: appName) {
-                // 清空成功，输入新路径
-                inputPathUsingPaste(appName: appName, path: path)
-                
-                // 验证输入是否成功
-                Thread.sleep(forTimeInterval: 0.3)
-                return verifyInputSuccess(appName: appName, expectedPath: path)
+            if verifyInputValue(appName: appName, expectedValue: path) {
+                return true
             }
         }
         
-        // 步骤2: 使用 Cmd+A 全选后粘贴
+        // 方法2: 点击清空按钮 + 输入新路径
+        printResult(success: false, message: "ESC重开方法失败，尝试清空按钮")
+        if clickClearButtonAndInput(appName: appName, path: path) {
+            Thread.sleep(forTimeInterval: 0.3)
+            if verifyInputValue(appName: appName, expectedValue: path) {
+                return true
+            }
+        }
+        
+        // 方法3: 使用 AppleScript 直接设置文本框的值
+        printResult(success: false, message: "清空按钮方法失败，尝试 AppleScript 直接设置")
+        if setTextFieldValueUsingAppleScript(appName: appName, value: path) {
+            Thread.sleep(forTimeInterval: 0.3)
+            if verifyInputValue(appName: appName, expectedValue: path) {
+                return true
+            }
+        }
+        
+        // 方法4: 使用 Cmd+A + 剪贴板粘贴
+        printResult(success: false, message: "AppleScript 直接设置失败，尝试剪贴板粘贴")
         inputPathUsingPaste(appName: appName, path: path)
-        
-        // 验证输入是否成功
         Thread.sleep(forTimeInterval: 0.3)
-        return verifyInputSuccess(appName: appName, expectedPath: path)
+        return verifyInputValue(appName: appName, expectedValue: path)
     }
     
-    private func clickClearButton(appName: String) -> Bool {
-        // 查找清空按钮（通常是 button，description 包含 "清除" 或 "clear"）
-        let clearButtonResults = AccessibilityManager.findElements(
-            byRole: "button",
-            byDescription: "清除",
-            inApp: appName
-        )
+    private func escAndReopenThenInput(appName: String, path: String) -> Bool {
+        // 设置剪贴板
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(path, forType: .string)
         
-        if let clearButton = clearButtonResults.first {
-            let clickResult = AccessibilityManager.clickElement(clearButton.element)
-            return clickResult
+        let escapedAppName = appName.replacingOccurrences(of: "\"", with: "\\\"")
+        
+        // 检查「前往文件夹」输入框是否已经打开
+        let textFieldResults = AccessibilityManager.findElements(byRole: "textfield", inApp: appName)
+        let goToFolderOpen = !textFieldResults.isEmpty
+        
+        var script: String
+        if goToFolderOpen {
+            // 「前往文件夹」已打开：ESC退出 + Cmd+Shift+G重新打开 + 粘贴
+            script = """
+            tell application "System Events"
+                tell process "\(escapedAppName)"
+                    set frontmost to true
+                    delay 0.2
+                    -- ESC退出当前「前往文件夹」对话框
+                    key code 53
+                    delay 0.3
+                    -- Cmd+Shift+G重新打开（会自动全选）
+                    keystroke "g" using {command down, shift down}
+                    delay 0.3
+                    -- 粘贴（替换全选的内容）
+                    keystroke "v" using command down
+                    delay 0.3
+                end tell
+            end tell
+            """
+        } else {
+            // 「前往文件夹」未打开：直接 Cmd+Shift+G打开 + 粘贴
+            script = """
+            tell application "System Events"
+                tell process "\(escapedAppName)"
+                    set frontmost to true
+                    delay 0.2
+                    -- Cmd+Shift+G打开（会自动全选）
+                    keystroke "g" using {command down, shift down}
+                    delay 0.3
+                    -- 粘贴（替换全选的内容）
+                    keystroke "v" using command down
+                    delay 0.3
+                end tell
+            end tell
+            """
         }
         
-        // 尝试查找英文 "clear"
-        let clearButtonResultsEn = AccessibilityManager.findElements(
-            byRole: "button",
-            byDescription: "clear",
-            inApp: appName
-        )
+        let task = Process()
+        task.launchPath = "/usr/bin/osascript"
+        task.arguments = ["-e", script]
         
-        if let clearButton = clearButtonResultsEn.first {
-            let clickResult = AccessibilityManager.clickElement(clearButton.element)
-            return clickResult
+        do {
+            try task.run()
+            task.waitUntilExit()
+            return task.terminationStatus == 0
+        } catch {
+            printResult(success: false, message: "ESC重开方法失败: \(error)")
+            return false
+        }
+    }
+    
+    private func clickClearButtonAndInput(appName: String, path: String) -> Bool {
+        // 查找清空按钮（通常是 button，description 包含 "清除" 或 "clear" 或显示为 X）
+        let buttonResults = AccessibilityManager.findElements(byRole: "button", inApp: appName)
+        
+        // 查找可能是清空按钮的按钮（通常在文本框附近，且没有标题或描述）
+        for button in buttonResults {
+            var titleValue: CFTypeRef?
+            var descriptionValue: CFTypeRef?
+            
+            AXUIElementCopyAttributeValue(button.element, kAXTitleAttribute as CFString, &titleValue)
+            AXUIElementCopyAttributeValue(button.element, kAXDescriptionAttribute as CFString, &descriptionValue)
+            
+            let title = (titleValue as? String) ?? ""
+            let description = (descriptionValue as? String) ?? ""
+            
+            // 清空按钮通常没有标题，或者描述包含 "clear" 或 "清除"
+            if title.isEmpty || description.lowercased().contains("clear") || description.contains("清除") {
+                let clickResult = AccessibilityManager.clickElement(button.element)
+                if clickResult {
+                    Thread.sleep(forTimeInterval: 0.3)
+                    // 输入新路径
+                    inputPathUsingPaste(appName: appName, path: path)
+                    return true
+                }
+            }
         }
         
         return false
     }
     
-    private func isInputBoxEmpty(appName: String) -> Bool {
-        // 查找文本框，检查是否为空
-        let textFieldResults = AccessibilityManager.findElements(byRole: "textfield", inApp: appName)
-        if let firstTextField = textFieldResults.first {
-            var value: CFTypeRef?
-            let result = AXUIElementCopyAttributeValue(firstTextField.element, kAXValueAttribute as CFString, &value)
-            if result == .success, let stringValue = value as? String {
-                return stringValue.isEmpty
+    private func setTextFieldValueUsingAppleScript(appName: String, value: String) -> Bool {
+        let escapedAppName = appName.replacingOccurrences(of: "\"", with: "\\\"")
+        let escapedValue = value.replacingOccurrences(of: "\"", with: "\\\"")
+        
+        // 尝试直接设置文本框的值
+        let script = """
+        tell application "System Events"
+            tell process "\(escapedAppName)"
+                set frontmost to true
+                delay 0.3
+                tell text field 1 of sheet 1 of window 1
+                    set value to "\(escapedValue)"
+                end tell
+            end tell
+        end tell
+        """
+        
+        let task = Process()
+        task.launchPath = "/usr/bin/osascript"
+        task.arguments = ["-e", script]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = pipe
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            if task.terminationStatus == 0 {
+                return true
+            } else {
+                printResult(success: false, message: "AppleScript 错误: \(output)")
+                return false
             }
+        } catch {
+            printResult(success: false, message: "AppleScript 执行失败: \(error)")
+            return false
         }
-        return false
     }
     
-    private func verifyInputSuccess(appName: String, expectedPath: String) -> Bool {
-        // 查找文本框，检查值是否包含期望的路径
-        let textFieldResults = AccessibilityManager.findElements(byRole: "textfield", inApp: appName)
-        if let firstTextField = textFieldResults.first {
+    private func verifyInputValue(appName: String, expectedValue: String) -> Bool {
+        // 多次尝试验证，因为输入可能有延迟
+        for attempt in 1...3 {
+            let textFieldResults = AccessibilityManager.findElements(byRole: "textfield", inApp: appName)
+            guard let textField = textFieldResults.first else {
+                printResult(success: false, message: "验证失败：未找到文本输入框（尝试 \(attempt)/3）")
+                Thread.sleep(forTimeInterval: 0.2)
+                continue
+            }
+            
             var value: CFTypeRef?
-            let result = AXUIElementCopyAttributeValue(firstTextField.element, kAXValueAttribute as CFString, &value)
+            let result = AXUIElementCopyAttributeValue(textField.element, kAXValueAttribute as CFString, &value)
             if result == .success, let stringValue = value as? String {
-                // 检查输入框值是否包含期望路径（可能是部分匹配）
-                return stringValue.contains(expectedPath) || expectedPath.contains(stringValue)
+                // 允许部分匹配（因为路径可能被截断显示）
+                let normalizedExpected = expectedValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                let normalizedActual = stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                printResult(success: true, message: "验证尝试 \(attempt)/3: 期望值='\(normalizedExpected)', 实际值='\(normalizedActual)'")
+                
+                if normalizedActual == normalizedExpected {
+                    printResult(success: true, message: "验证成功：路径完全匹配")
+                    return true
+                }
+                
+                // 检查是否包含关键部分（文件名）
+                let expectedURL = URL(fileURLWithPath: normalizedExpected)
+                let actualURL = URL(fileURLWithPath: normalizedActual)
+                
+                if expectedURL.lastPathComponent == actualURL.lastPathComponent {
+                    printResult(success: true, message: "验证成功：文件名匹配")
+                    return true
+                }
+                
+                // 检查是否包含期望路径（部分匹配）
+                if normalizedActual.contains(expectedURL.lastPathComponent) {
+                    printResult(success: true, message: "验证成功：包含文件名")
+                    return true
+                }
+                
+                printResult(success: false, message: "验证失败：路径不匹配（尝试 \(attempt)/3）")
+            } else {
+                printResult(success: false, message: "验证失败：无法读取输入框值（尝试 \(attempt)/3），错误码: \(result.rawValue)")
+            }
+            
+            if attempt < 3 {
+                Thread.sleep(forTimeInterval: 0.3)
             }
         }
+        
         return false
     }
     
@@ -364,14 +585,21 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         NSPasteboard.general.setString(path, forType: .string)
         
         let escapedAppName = appName.replacingOccurrences(of: "\"", with: "\\\"")
+        
+        // 方法: 多次退格清空 + 粘贴
         let script = """
         tell application "System Events"
             tell process "\(escapedAppName)"
                 set frontmost to true
                 delay 0.3
-                keystroke "a" using command down
-                delay 0.2
+                -- 多次退格清空（100次确保清空）
+                repeat 100 times
+                    key code 51
+                end repeat
+                delay 0.3
+                -- 粘贴（Cmd+V）
                 keystroke "v" using command down
+                delay 0.3
             end tell
         end tell
         """
@@ -384,8 +612,7 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
             try task.run()
             task.waitUntilExit()
         } catch {
-            // 降级方案：直接输入
-            fallbackInputUsingKeystrokes(appName: appName, path: path)
+            printResult(success: false, message: "AppleScript 粘贴失败: \(error)")
         }
     }
     
@@ -469,6 +696,15 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
                 tell process "\(escapedAppName)"
                     set frontmost to true
                     key code 36
+                end tell
+            end tell
+            """
+        } else if key == "esc" {
+            script = """
+            tell application "System Events"
+                tell process "\(escapedAppName)"
+                    set frontmost to true
+                    key code 53
                 end tell
             end tell
             """
