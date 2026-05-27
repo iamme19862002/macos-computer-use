@@ -34,6 +34,13 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
     var timeout: Int = 5
 
     func run() async throws {
+        // 0. 验证文件是否存在
+        let fileManager = FileManager.default
+        if !fileManager.fileExists(atPath: path) {
+            printResult(success: false, message: "文件不存在: \(path)")
+            return
+        }
+        
         // 1. 激活应用
         let activateResult = AppManager.activate(appName: app)
         if !activateResult.success {
@@ -85,42 +92,30 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
             return
         }
 
-        // 6. 输入文件路径（使用剪贴板粘贴确保中文路径正确）
-        // 先确保输入框聚焦
-        let textFieldResults = AccessibilityManager.findElements(byRole: "textfield", inApp: app)
-        if let firstTextField = textFieldResults.first {
-            _ = AccessibilityManager.clickElement(firstTextField.element)
-            try await Task.sleep(nanoseconds: 200_000_000)
-        }
-        
-        let pasteSuccess = pasteTextToProcess(appName: app, text: path)
-        if !pasteSuccess {
-            // 降级方案：直接输入
-            let textSent = sendTextToProcess(appName: app, text: path)
-            if !textSent {
-                KeyboardController.typeText(path)
-            }
-        }
+        // 6. 输入文件路径
+        // 使用 clearAndInputPath 方法，它会自动清空并输入新路径
+        clearAndInputPath(appName: app, path: path)
+        try await Task.sleep(nanoseconds: 500_000_000)
 
         try await Task.sleep(nanoseconds: 500_000_000)
 
         // 7. 按回车确认路径
         sendKeyToProcess(appName: app, key: "return")
 
-        // 7. 等待文件选择器跳转到目标文件夹
+        // 8. 等待文件选择器跳转到目标文件夹
         try await Task.sleep(nanoseconds: 1_500_000_000)
 
-        // 8. 再次按回车确认选择文件
+        // 9. 再次按回车确认选择文件
         sendKeyToProcess(appName: app, key: "return")
 
-        // 9. 最终验证：检查文件选择器是否关闭
+        // 10. 最终验证：检查文件选择器是否关闭
         try await Task.sleep(nanoseconds: 500_000_000)
         let fileDialogClosed = await verifyFileDialogClosed()
 
         if fileDialogClosed {
             printResult(success: true, message: "已选择文件: \(path)")
         } else {
-            printResult(success: false, message: "文件选择可能未完成，对话框未关闭")
+            printResult(success: false, message: "文件选择失败：对话框未关闭，请检查路径是否正确")
         }
     }
 
@@ -279,6 +274,80 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         keyUp.post(tap: .cghidEventTap)
 
         return true
+    }
+
+    private func clearAndInputPath(appName: String, path: String) {
+        // 方法1: 使用辅助功能 API 直接设置文本框值
+        let textFieldResults = AccessibilityManager.findElements(byRole: "textfield", inApp: appName)
+        if let firstTextField = textFieldResults.first {
+            // 尝试直接设置值
+            let value = path as CFString
+            let result = AXUIElementSetAttributeValue(firstTextField.element, kAXValueAttribute as CFString, value)
+            if result == .success {
+                return
+            }
+        }
+        
+        // 方法2: 使用 AppleScript Cmd+A 然后输入
+        let escapedAppName = appName.replacingOccurrences(of: "\"", with: "\\\"")
+        let script = """
+        tell application "System Events"
+            tell process "\(escapedAppName)"
+                set frontmost to true
+                delay 0.3
+                keystroke "a" using command down
+                delay 0.2
+                keystroke "\(path)"
+            end tell
+        end tell
+        """
+
+        let task = Process()
+        task.launchPath = "/usr/bin/osascript"
+        task.arguments = ["-e", script]
+
+        do {
+            try task.run()
+            task.waitUntilExit()
+        } catch {
+            // 降级方案：使用剪贴板
+            fallbackInputUsingPaste(appName: appName, path: path)
+        }
+    }
+    
+    private func fallbackInputUsingPaste(appName: String, path: String) {
+        // 使用剪贴板粘贴
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(path, forType: .string)
+        
+        let escapedAppName = appName.replacingOccurrences(of: "\"", with: "\\\"")
+        let script = """
+        tell application "System Events"
+            tell process "\(escapedAppName)"
+                set frontmost to true
+                delay 0.3
+                keystroke "a" using command down
+                delay 0.2
+                keystroke "v" using command down
+            end tell
+        end tell
+        """
+        
+        let task = Process()
+        task.launchPath = "/usr/bin/osascript"
+        task.arguments = ["-e", script]
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+        } catch {
+            // 最后降级：直接输入
+            for char in path {
+                if let keyCode = KeyMap.cgKeyCode(for: String(char)) {
+                    KeyboardController.pressKeys([keyCode])
+                }
+            }
+        }
     }
 
     private func sendTextToProcess(appName: String, text: String) -> Bool {
