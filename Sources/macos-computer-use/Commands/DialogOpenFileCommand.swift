@@ -94,9 +94,11 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
 
         // 6. 输入文件路径
         // 使用 clearAndInputPath 方法，它会自动清空并输入新路径
-        clearAndInputPath(appName: app, path: path)
-        try await Task.sleep(nanoseconds: 500_000_000)
-
+        let inputSuccess = clearAndInputPath(appName: app, path: path)
+        if !inputSuccess {
+            printResult(success: false, message: "路径输入失败：无法将路径输入到文件选择器")
+            return
+        }
         try await Task.sleep(nanoseconds: 500_000_000)
 
         // 7. 按回车确认路径
@@ -276,20 +278,84 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         return true
     }
 
-    private func clearAndInputPath(appName: String, path: String) {
-        // 方法1: 使用辅助功能 API 直接设置文本框值
-        let textFieldResults = AccessibilityManager.findElements(byRole: "textfield", inApp: appName)
-        if let firstTextField = textFieldResults.first {
-            // 尝试直接设置值
-            let value = path as CFString
-            let result = AXUIElementSetAttributeValue(firstTextField.element, kAXValueAttribute as CFString, value)
-            if result == .success {
-                return
+    private func clearAndInputPath(appName: String, path: String) -> Bool {
+        // 步骤1: 尝试点击清空按钮
+        if clickClearButton(appName: appName) {
+            // 等待清空生效
+            Thread.sleep(forTimeInterval: 0.3)
+            
+            // 验证是否清空成功
+            if isInputBoxEmpty(appName: appName) {
+                // 清空成功，输入新路径
+                inputPathUsingPaste(appName: appName, path: path)
+                
+                // 验证输入是否成功
+                Thread.sleep(forTimeInterval: 0.3)
+                return verifyInputSuccess(appName: appName, expectedPath: path)
             }
         }
         
-        // 方法2: 使用剪贴板粘贴（对中文路径支持更好）
+        // 步骤2: 使用 Cmd+A 全选后粘贴
         inputPathUsingPaste(appName: appName, path: path)
+        
+        // 验证输入是否成功
+        Thread.sleep(forTimeInterval: 0.3)
+        return verifyInputSuccess(appName: appName, expectedPath: path)
+    }
+    
+    private func clickClearButton(appName: String) -> Bool {
+        // 查找清空按钮（通常是 button，description 包含 "清除" 或 "clear"）
+        let clearButtonResults = AccessibilityManager.findElements(
+            byRole: "button",
+            byDescription: "清除",
+            inApp: appName
+        )
+        
+        if let clearButton = clearButtonResults.first {
+            let clickResult = AccessibilityManager.clickElement(clearButton.element)
+            return clickResult
+        }
+        
+        // 尝试查找英文 "clear"
+        let clearButtonResultsEn = AccessibilityManager.findElements(
+            byRole: "button",
+            byDescription: "clear",
+            inApp: appName
+        )
+        
+        if let clearButton = clearButtonResultsEn.first {
+            let clickResult = AccessibilityManager.clickElement(clearButton.element)
+            return clickResult
+        }
+        
+        return false
+    }
+    
+    private func isInputBoxEmpty(appName: String) -> Bool {
+        // 查找文本框，检查是否为空
+        let textFieldResults = AccessibilityManager.findElements(byRole: "textfield", inApp: appName)
+        if let firstTextField = textFieldResults.first {
+            var value: CFTypeRef?
+            let result = AXUIElementCopyAttributeValue(firstTextField.element, kAXValueAttribute as CFString, &value)
+            if result == .success, let stringValue = value as? String {
+                return stringValue.isEmpty
+            }
+        }
+        return false
+    }
+    
+    private func verifyInputSuccess(appName: String, expectedPath: String) -> Bool {
+        // 查找文本框，检查值是否包含期望的路径
+        let textFieldResults = AccessibilityManager.findElements(byRole: "textfield", inApp: appName)
+        if let firstTextField = textFieldResults.first {
+            var value: CFTypeRef?
+            let result = AXUIElementCopyAttributeValue(firstTextField.element, kAXValueAttribute as CFString, &value)
+            if result == .success, let stringValue = value as? String {
+                // 检查输入框值是否包含期望路径（可能是部分匹配）
+                return stringValue.contains(expectedPath) || expectedPath.contains(stringValue)
+            }
+        }
+        return false
     }
     
     private func inputPathUsingPaste(appName: String, path: String) {
@@ -401,6 +467,7 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
             script = """
             tell application "System Events"
                 tell process "\(escapedAppName)"
+                    set frontmost to true
                     key code 36
                 end tell
             end tell
@@ -409,6 +476,7 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
             script = """
             tell application "System Events"
                 tell process "\(escapedAppName)"
+                    set frontmost to true
                     keystroke "\(key)"
                 end tell
             end tell
