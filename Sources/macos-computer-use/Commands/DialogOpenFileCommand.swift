@@ -48,24 +48,27 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
 
         // 2. 如果指定了按钮，先点击按钮打开文件选择器
         if let buttonTitle = button {
+            printResult(success: true, message: "正在查找并点击按钮: \(buttonTitle)")
             let buttonClicked = clickButton(title: buttonTitle)
             if !buttonClicked {
-                printResult(success: false, message: "无法点击按钮: \(buttonTitle)")
+                printResult(success: false, message: "无法点击按钮: \(buttonTitle)，请确认按钮标题正确")
                 return
             }
+            printResult(success: true, message: "按钮已点击，等待文件选择器...")
 
             // 等待文件选择器出现
             let fileDialogAppeared = await waitForFileDialog(timeout: timeout)
             if !fileDialogAppeared {
-                printResult(success: false, message: "文件选择器未出现")
+                printResult(success: false, message: "文件选择器未在 \(timeout) 秒内出现")
                 return
             }
+            printResult(success: true, message: "文件选择器已出现")
 
             try await Task.sleep(nanoseconds: 500_000_000)
         }
 
-        // 3. 检测文件选择器是否已打开（在应用激活后检测）
-        let fileDialogAlreadyOpen = isFileDialogOpen()
+        // 3. 检测文件选择器是否已打开（支持文件选择器已打开或未打开的情况）
+        _ = isFileDialogOpen()
 
         // 4. 发送 Cmd+Shift+G 打开「前往文件夹」对话框
         // 无论文件选择器是否已打开，都需要打开「前往文件夹」对话框来输入路径
@@ -75,13 +78,21 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
             return
         }
 
-        // 4. 等待「前往文件夹」对话框出现（不强制要求，因为有些应用不显示标题）
-        _ = await waitForGoToFolderDialog(timeout: 2)
-
-        // 5. 等待对话框完全出现并确保焦点在文本输入框
-        try await Task.sleep(nanoseconds: 1_000_000_000)
+        // 5. 等待「前往文件夹」输入框出现并确保聚焦
+        let inputBoxReady = await waitForInputBoxAndFocus(timeout: timeout)
+        if !inputBoxReady {
+            printResult(success: false, message: "路径输入框未就绪")
+            return
+        }
 
         // 6. 输入文件路径（使用剪贴板粘贴确保中文路径正确）
+        // 先确保输入框聚焦
+        let textFieldResults = AccessibilityManager.findElements(byRole: "textfield", inApp: app)
+        if let firstTextField = textFieldResults.first {
+            _ = AccessibilityManager.clickElement(firstTextField.element)
+            try await Task.sleep(nanoseconds: 200_000_000)
+        }
+        
         let pasteSuccess = pasteTextToProcess(appName: app, text: path)
         if !pasteSuccess {
             // 降级方案：直接输入
@@ -114,18 +125,29 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
     }
 
     private func clickButton(title: String) -> Bool {
-        // 使用 AccessibilityManager.findElements 查找按钮（同时匹配 title、value、description）
+        // 方法1: 使用 AccessibilityManager.findElements 查找按钮（同时匹配 title、value、description）
         let results = AccessibilityManager.findElements(
             byRole: "button",
             byTitle: title,
             inApp: app
         )
         
-        guard let firstButton = results.first else {
-            return false
+        if let firstButton = results.first {
+            return AccessibilityManager.clickElement(firstButton.element)
         }
         
-        return AccessibilityManager.clickElement(firstButton.element)
+        // 方法2: 使用 description 查找（有些按钮 title 为空，但 description 有值）
+        let resultsByDescription = AccessibilityManager.findElements(
+            byRole: "button",
+            byDescription: title,
+            inApp: app
+        )
+        
+        if let firstButton = resultsByDescription.first {
+            return AccessibilityManager.clickElement(firstButton.element)
+        }
+        
+        return false
     }
 
     private func waitForFileDialog(timeout: Int) async -> Bool {
@@ -133,19 +155,8 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         let checkInterval: UInt64 = 300_000_000  // 300ms
         
         while Date().timeIntervalSince(startTime) < Double(timeout) {
-            // 检查文件选择器是否打开
+            // 检查文件选择器是否打开（使用多种方法）
             if isFileDialogOpen() {
-                return true
-            }
-            
-            // 检查是否有新的 Panel 或 Sheet 出现
-            let panels = AccessibilityManager.findPanelElements(inApp: app)
-            if !panels.isEmpty {
-                return true
-            }
-            
-            let sheets = AccessibilityManager.findSheetElements(inApp: app)
-            if !sheets.isEmpty {
                 return true
             }
             
@@ -155,6 +166,19 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
     }
 
     private func isFileDialogOpen() -> Bool {
+        // 方法1: 使用 AccessibilityManager.findElements 查找 Sheet（与 element-find --role sheet 一致）
+        let sheetResults = AccessibilityManager.findElements(byRole: "sheet", inApp: app)
+        if !sheetResults.isEmpty {
+            return true
+        }
+        
+        // 方法2: 使用 AccessibilityManager.findElements 查找 Panel/Dialog
+        let dialogResults = AccessibilityManager.findElements(byRole: "dialog", inApp: app)
+        if !dialogResults.isEmpty {
+            return true
+        }
+
+        // 方法3: 使用 findPanelElements 和 findSheetElements（备选）
         let panels = AccessibilityManager.findPanelElements(inApp: app)
         if !panels.isEmpty {
             return true
@@ -165,6 +189,7 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
             return true
         }
 
+        // 方法4: 检查窗口列表中的标题
         if let windowList = getWindowList() {
             for window in windowList {
                 if let title = window["title"] as? String {
@@ -394,6 +419,58 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
                 }
             }
         }
+        return false
+    }
+
+    private func waitForInputBoxAndFocus(timeout: Int) async -> Bool {
+        let startTime = Date()
+        let checkInterval: UInt64 = 300_000_000  // 300ms
+        
+        while Date().timeIntervalSince(startTime) < Double(timeout) {
+            // 方法1: 使用 AccessibilityManager.findElements 查找文本框（最可靠）
+            let textFieldResults = AccessibilityManager.findElements(byRole: "textfield", inApp: app)
+            if !textFieldResults.isEmpty {
+                // 找到文本框，确保聚焦
+                if let firstTextField = textFieldResults.first {
+                    _ = AccessibilityManager.clickElement(firstTextField.element)
+                    try? await Task.sleep(nanoseconds: 200_000_000)
+                }
+                return true
+            }
+            
+            // 方法2: 检测是否有可编辑的文本框出现
+            if hasEditableTextFieldInForeground() {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                return true
+            }
+            
+            // 方法3: 检测「前往文件夹」对话框标题
+            if let windowList = getWindowList() {
+                for window in windowList {
+                    if let title = window["title"] as? String {
+                        if title.contains("前往") || title.contains("Go To") ||
+                           title.contains("Go to") || title.contains("转到") ||
+                           title.contains("前往文件夹") || title.contains("Go to Folder") {
+                            try? await Task.sleep(nanoseconds: 300_000_000)
+                            return true
+                        }
+                    }
+                }
+            }
+            
+            try? await Task.sleep(nanoseconds: checkInterval)
+        }
+        
+        // 超时后，如果已经有文本框，也认为是成功的
+        let finalResults = AccessibilityManager.findElements(byRole: "textfield", inApp: app)
+        if !finalResults.isEmpty {
+            // 确保聚焦
+            if let firstTextField = finalResults.first {
+                _ = AccessibilityManager.clickElement(firstTextField.element)
+            }
+            return true
+        }
+        
         return false
     }
 
