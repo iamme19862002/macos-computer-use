@@ -14,14 +14,14 @@ import Foundation
 enum AppVersion {
     /// 当前版本号
     /// 格式: 主版本号.次版本号.修订号
-    static let current = "3.3.4"
+    static let current = "3.4.0"
     
     /// 主版本号
     static let major = 3
     
     /// 次版本号
-    static let minor = 3
+    static let minor = 4
     
     /// 修订号
-    static let patch = 4
+    static let patch = 0
 }
