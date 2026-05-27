@@ -5,6 +5,21 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 并且本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/spec/v2.0.0.html)。
 
+## [3.3.4] - 2026-05-26
+
+### 修复
+
+#### 系统对话框操作 (MCU-002)
+- **修复 `dialog-open-file` 路径输入问题**
+- 修复检测时机：在应用激活后检测文件选择器状态
+- 统一处理逻辑：无论文件选择器是否已打开，都发送 Cmd+Shift+G 打开「前往文件夹」对话框
+- 新增 `pasteTextToProcess()` 方法，使用剪贴板粘贴确保中文路径正确输入
+- 添加 AppKit 导入以支持 NSPasteboard
+- 修复 v3.3.3 中文件选择器已打开时无法输入路径的问题
+
+### 文档
+- 版本号更新至 3.3.4
+
 ## [3.3.3] - 2026-05-26
 
 ### 修复
@@ -26,7 +41,7 @@
 #### 系统对话框操作 (MCU-002)
 - 修复 `dialog-open-file` 无法识别已打开的文件选择器问题
 - 自动检测文件选择器状态，无需 `--force` 参数，简化命令使用
-- 已打开：直接输入文件路径并选择
+- 已打开：发送 Cmd+Shift+G 打开「前往文件夹」对话框，然后输入路径
 - 未打开：自动发送 Cmd+Shift+G 打开「前往文件夹」对话框
 - 新增 `isFileDialogOpen()` 检测方法，支持 Sheet、Panel 和 CGWindowList 三层检测
 - 优化 `countTextFieldsInSheetsAndPanels()` 同时统计 Sheet 和 Panel 中的文本输入框
