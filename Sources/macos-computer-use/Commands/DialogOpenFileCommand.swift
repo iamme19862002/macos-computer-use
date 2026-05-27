@@ -76,6 +76,12 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
 
         // 3. 检测文件选择器是否已打开（支持文件选择器已打开或未打开的情况）
         _ = isFileDialogOpen()
+        
+        // 确定文件选择器所在的进程名称（传统 AppKit 或 SwiftUI 独立进程）
+        let dialogProcessName = getFileDialogProcessName()
+        if dialogProcessName == "Open and Save Panel Service" {
+            printResult(success: true, message: "检测到 SwiftUI 独立进程文件选择器")
+        }
 
         // 4. 检查「前往文件夹」是否已打开，如果已打开则先 ESC 退出
         // 先激活应用，确保能正确查找到元素
@@ -83,16 +89,16 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         try await Task.sleep(nanoseconds: 300_000_000)
         
         // 检查「前往文件夹」是否已打开：查找在 sheet/dialog 中的 textfield
-        let goToFolderOpen = isGoToFolderOpen(appName: app)
+        let goToFolderOpen = isGoToFolderOpen(appName: dialogProcessName)
         if goToFolderOpen {
             // 「前往文件夹」已打开，先 ESC 退出
             printResult(success: true, message: "检测到「前往文件夹」已打开，先 ESC 退出")
-            sendKeyToProcess(appName: app, key: "esc")
+            sendKeyToProcess(appName: dialogProcessName, key: "esc")
             try await Task.sleep(nanoseconds: 500_000_000)
         }
 
         // 5. 发送 Cmd+Shift+G 打开「前往文件夹」对话框
-        let shortcutSent = sendGoToFolderShortcut(appName: app)
+        let shortcutSent = sendGoToFolderShortcut(appName: dialogProcessName)
         if !shortcutSent {
             printResult(success: false, message: "无法发送「前往文件夹」快捷键")
             return
@@ -106,11 +112,11 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         }
 
         // 7. 输入文件路径
-        inputPathUsingPaste(appName: app, path: path)
+        inputPathUsingPaste(appName: dialogProcessName, path: path)
         try await Task.sleep(nanoseconds: 500_000_000)
         
         // 验证输入是否成功
-        let inputSuccess = verifyInputValue(appName: app, expectedValue: path)
+        let inputSuccess = verifyInputValue(appName: dialogProcessName, expectedValue: path)
         if !inputSuccess {
             printResult(success: false, message: "路径输入失败：无法将路径输入到文件选择器")
             return
@@ -118,13 +124,13 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         try await Task.sleep(nanoseconds: 500_000_000)
 
         // 7. 按回车确认路径
-        sendKeyToProcess(appName: app, key: "return")
+        sendKeyToProcess(appName: dialogProcessName, key: "return")
 
         // 8. 等待文件选择器跳转到目标文件夹
         try await Task.sleep(nanoseconds: 1_500_000_000)
 
         // 9. 再次按回车确认选择文件
-        sendKeyToProcess(appName: app, key: "return")
+        sendKeyToProcess(appName: dialogProcessName, key: "return")
 
         // 10. 最终验证：检查文件选择器是否关闭
         try await Task.sleep(nanoseconds: 500_000_000)
@@ -215,7 +221,7 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
             return true
         }
 
-        // 方法4: 检查窗口列表中的标题
+        // 方法4: 检查窗口列表中的标题（目标应用拥有的窗口）
         if let windowList = getWindowList() {
             for window in windowList {
                 if let title = window["title"] as? String {
@@ -232,7 +238,42 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
             }
         }
 
+        // 方法5: 检测 SwiftUI 独立进程文件选择器（Open and Save Panel Service）
+        // SwiftUI 应用使用独立进程显示文件选择器，需要检查 Panel Service
+        let panelServiceSheets = AccessibilityManager.findElements(byRole: "sheet", inApp: "Open and Save Panel Service")
+        if !panelServiceSheets.isEmpty {
+            return true
+        }
+        
+        let panelServiceDialogs = AccessibilityManager.findElements(byRole: "dialog", inApp: "Open and Save Panel Service")
+        if !panelServiceDialogs.isEmpty {
+            return true
+        }
+
         return false
+    }
+    
+    private func getFileDialogProcessName() -> String {
+        // 检测文件选择器所在的进程名称
+        // 对于传统 AppKit 应用，文件选择器在应用内
+        // 对于 SwiftUI 应用，文件选择器在 "Open and Save Panel Service" 独立进程中
+        
+        // 先检查目标应用内是否有文件选择器
+        let appSheets = AccessibilityManager.findElements(byRole: "sheet", inApp: app)
+        let appDialogs = AccessibilityManager.findElements(byRole: "dialog", inApp: app)
+        if !appSheets.isEmpty || !appDialogs.isEmpty {
+            return app
+        }
+        
+        // 检查 "Open and Save Panel Service"
+        let panelServiceSheets = AccessibilityManager.findElements(byRole: "sheet", inApp: "Open and Save Panel Service")
+        let panelServiceDialogs = AccessibilityManager.findElements(byRole: "dialog", inApp: "Open and Save Panel Service")
+        if !panelServiceSheets.isEmpty || !panelServiceDialogs.isEmpty {
+            return "Open and Save Panel Service"
+        }
+        
+        // 默认返回目标应用
+        return app
     }
 
     private func isGoToFolderOpen(appName: String) -> Bool {
@@ -530,15 +571,34 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
     private func verifyInputValue(appName: String, expectedValue: String) -> Bool {
         // 多次尝试验证，因为输入可能有延迟
         for attempt in 1...3 {
+            // 查找「前往文件夹」输入框：在 sheet/dialog 中的 textfield
             let textFieldResults = AccessibilityManager.findElements(byRole: "textfield", inApp: appName)
-            guard let textField = textFieldResults.first else {
+            
+            // 过滤：找到在 sheet 或 dialog 中的 textfield（不是文件列表中的）
+            var targetTextField: AXUIElement?
+            for textField in textFieldResults {
+                // 检查这个 textfield 是否在 sheet 或 dialog 中
+                var parentValue: CFTypeRef?
+                let parentResult = AXUIElementCopyAttributeValue(textField.element, kAXParentAttribute as CFString, &parentValue)
+                if parentResult == .success, let parent = parentValue {
+                    var roleValue: CFTypeRef?
+                    AXUIElementCopyAttributeValue(parent as! AXUIElement, kAXRoleAttribute as CFString, &roleValue)
+                    if let role = roleValue as? String, role == "AXSheet" || role == "AXDialog" {
+                        targetTextField = textField.element
+                        break
+                    }
+                }
+            }
+            
+            // 如果没找到在 sheet/dialog 中的，使用第一个
+            guard let textField = targetTextField ?? textFieldResults.first?.element else {
                 printResult(success: false, message: "验证失败：未找到文本输入框（尝试 \(attempt)/3）")
                 Thread.sleep(forTimeInterval: 0.2)
                 continue
             }
             
             var value: CFTypeRef?
-            let result = AXUIElementCopyAttributeValue(textField.element, kAXValueAttribute as CFString, &value)
+            let result = AXUIElementCopyAttributeValue(textField, kAXValueAttribute as CFString, &value)
             if result == .success, let stringValue = value as? String {
                 // 允许部分匹配（因为路径可能被截断显示）
                 let normalizedExpected = expectedValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -586,18 +646,16 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         
         let escapedAppName = appName.replacingOccurrences(of: "\"", with: "\\\"")
         
-        // 方法: 多次退格清空 + 粘贴
+        // 方法: Cmd+A 全选 + 粘贴（替换）
         let script = """
         tell application "System Events"
             tell process "\(escapedAppName)"
                 set frontmost to true
                 delay 0.3
-                -- 多次退格清空（100次确保清空）
-                repeat 100 times
-                    key code 51
-                end repeat
-                delay 0.3
-                -- 粘贴（Cmd+V）
+                -- Cmd+A 全选
+                keystroke "a" using command down
+                delay 0.2
+                -- 粘贴（替换全选的内容）
                 keystroke "v" using command down
                 delay 0.3
             end tell
