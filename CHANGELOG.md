@@ -5,6 +5,21 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 并且本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/spec/v2.0.0.html)。
 
+## [未发布]
+
+### 新增
+
+#### 系统对话框操作
+- **新增 `dialog-open-file --button` 参数**
+- 支持自动点击按钮打开文件选择器，简化使用流程
+- 新增 `clickButton()` 方法，通过按钮标题查找并点击按钮
+- 新增 `findButton()` 方法，递归查找应用中的按钮元素
+- 新增 `waitForFileDialog()` 方法，等待文件选择器出现
+- 使用示例：`macos-computer-use dialog-open-file --app "LyricVoice" --button "添加文件" --path "/path/to/file.mp3"`
+
+### 文档
+- 版本号更新至 3.4.0
+
 ## [3.3.4] - 2026-05-26
 
 ### 修复
