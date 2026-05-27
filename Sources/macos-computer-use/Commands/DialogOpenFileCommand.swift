@@ -288,35 +288,12 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
             }
         }
         
-        // 方法2: 使用 AppleScript Cmd+A 然后输入
-        let escapedAppName = appName.replacingOccurrences(of: "\"", with: "\\\"")
-        let script = """
-        tell application "System Events"
-            tell process "\(escapedAppName)"
-                set frontmost to true
-                delay 0.3
-                keystroke "a" using command down
-                delay 0.2
-                keystroke "\(path)"
-            end tell
-        end tell
-        """
-
-        let task = Process()
-        task.launchPath = "/usr/bin/osascript"
-        task.arguments = ["-e", script]
-
-        do {
-            try task.run()
-            task.waitUntilExit()
-        } catch {
-            // 降级方案：使用剪贴板
-            fallbackInputUsingPaste(appName: appName, path: path)
-        }
+        // 方法2: 使用剪贴板粘贴（对中文路径支持更好）
+        inputPathUsingPaste(appName: appName, path: path)
     }
     
-    private func fallbackInputUsingPaste(appName: String, path: String) {
-        // 使用剪贴板粘贴
+    private func inputPathUsingPaste(appName: String, path: String) {
+        // 使用剪贴板粘贴路径
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(path, forType: .string)
         
@@ -341,11 +318,16 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
             try task.run()
             task.waitUntilExit()
         } catch {
-            // 最后降级：直接输入
-            for char in path {
-                if let keyCode = KeyMap.cgKeyCode(for: String(char)) {
-                    KeyboardController.pressKeys([keyCode])
-                }
+            // 降级方案：直接输入
+            fallbackInputUsingKeystrokes(appName: appName, path: path)
+        }
+    }
+    
+    private func fallbackInputUsingKeystrokes(appName: String, path: String) {
+        // 最后降级：直接逐个字符输入
+        for char in path {
+            if let keyCode = KeyMap.cgKeyCode(for: String(char)) {
+                KeyboardController.pressKeys([keyCode])
             }
         }
     }
