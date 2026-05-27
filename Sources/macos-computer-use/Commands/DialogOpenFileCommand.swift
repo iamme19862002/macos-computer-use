@@ -160,8 +160,21 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
                 return true
             }
             
+            // 额外检查：直接使用 findElements 查找 sheet（与 element-find --role sheet 一致）
+            let sheetResults = AccessibilityManager.findElements(byRole: "sheet", inApp: app)
+            if !sheetResults.isEmpty {
+                return true
+            }
+            
             try? await Task.sleep(nanoseconds: checkInterval)
         }
+        
+        // 超时后再次检查
+        let finalSheets = AccessibilityManager.findElements(byRole: "sheet", inApp: app)
+        if !finalSheets.isEmpty {
+            return true
+        }
+        
         return false
     }
 
