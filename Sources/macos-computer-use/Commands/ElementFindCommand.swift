@@ -19,14 +19,17 @@ struct ElementFindCommand: AsyncParsableCommand {
     @Option(name: .long, help: "按角色查找 (如: button, textfield)")
     var role: String?
 
-    @Option(name: .long, help: "按标题查找")
+    @Option(name: .long, help: "按标题查找（只匹配 title 属性）")
     var title: String?
 
     @Option(name: .long, help: "按标识符查找")
     var identifier: String?
 
-    @Option(name: .long, help: "按描述查找")
+    @Option(name: .long, help: "按描述查找（只匹配 description 属性）")
     var description: String?
+
+    @Option(name: .long, help: "按标签模糊查找（同时匹配 title、value、description）")
+    var label: String?
 
     @Option(name: .long, help: "在指定应用中查找（会自动激活应用）")
     var app: String?
@@ -60,6 +63,7 @@ struct ElementFindCommand: AsyncParsableCommand {
             byTitle: title,
             byIdentifier: identifier,
             byDescription: description,
+            byLabel: label,
             inApp: app
         )
 
