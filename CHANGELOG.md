@@ -9,6 +9,14 @@
 
 ### 新增
 
+#### 元素查找与点击
+- **新增 `--label` 参数到 `element-find` 和 `element-click` 命令**
+- `--label` 支持模糊匹配，同时搜索 title、value、description 属性
+- `--title` 现在只匹配 title 属性（精确语义）
+- `--description` 现在只匹配 description 属性（精确语义）
+- 统一 `element-click` 和 `element-find` 的匹配逻辑
+- 修复 `element-click --sheet` 模式下的匹配逻辑，与 `AccessibilityManager.findElements` 保持一致
+
 #### 系统对话框操作
 - **新增 `dialog-open-file --button` 参数**
 - 支持自动点击按钮打开文件选择器，简化使用流程
@@ -18,7 +26,7 @@
 - 使用示例：`macos-computer-use dialog-open-file --app "LyricVoice" --button "添加文件" --path "/path/to/file.mp3"`
 
 ### 文档
-- 版本号更新至 3.4.0
+- 版本号更新至 3.5.0
 
 ## [3.3.4] - 2026-05-26
 
