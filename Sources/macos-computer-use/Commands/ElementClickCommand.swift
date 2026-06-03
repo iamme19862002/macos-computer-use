@@ -19,11 +19,17 @@ struct ElementClickCommand: AsyncParsableCommand {
     @Option(name: .long, help: "按角色查找")
     var role: String?
 
-    @Option(name: .long, help: "按标题查找")
+    @Option(name: .long, help: "按标题查找（只匹配 title 属性）")
     var title: String?
 
     @Option(name: .long, help: "按标识符查找")
     var identifier: String?
+
+    @Option(name: .long, help: "按描述查找（只匹配 description 属性）")
+    var description: String?
+
+    @Option(name: .long, help: "按标签模糊查找（同时匹配 title、value、description）")
+    var label: String?
 
     @Option(name: .long, help: "在指定应用中查找（会自动激活应用）")
     var app: String?
@@ -58,25 +64,30 @@ struct ElementClickCommand: AsyncParsableCommand {
         let results: [(element: AXUIElement, info: UIElementInfo)]
         
         if sheet, let appName = app {
-            // Search in sheet elements
+            // Search in sheet elements - 使用与 AccessibilityManager.findElements 一致的匹配逻辑
             let sheets = AccessibilityManager.findSheetElements(inApp: appName)
             var sheetResults: [(AXUIElement, UIElementInfo)] = []
             
             for sheetElement in sheets {
-                let found = searchInElement(
+                let found = searchElementsInSheet(
                     sheetElement,
                     byRole: role,
                     byTitle: title,
-                    byIdentifier: identifier
+                    byIdentifier: identifier,
+                    byDescription: description,
+                    byLabel: label
                 )
                 sheetResults.append(contentsOf: found)
             }
             results = sheetResults
         } else {
+            // 统一使用 AccessibilityManager.findElements，享受相同的匹配逻辑
             results = AccessibilityManager.findElements(
                 byRole: role,
                 byTitle: title,
                 byIdentifier: identifier,
+                byDescription: description,
+                byLabel: label,
                 inApp: app
             )
         }
@@ -123,11 +134,13 @@ struct ElementClickCommand: AsyncParsableCommand {
         }
     }
     
-    private func searchInElement(
+    private func searchElementsInSheet(
         _ element: AXUIElement,
         byRole: String?,
         byTitle: String?,
-        byIdentifier: String?
+        byIdentifier: String?,
+        byDescription: String?,
+        byLabel: String?
     ) -> [(AXUIElement, UIElementInfo)] {
         var results: [(AXUIElement, UIElementInfo)] = []
         
@@ -137,14 +150,30 @@ struct ElementClickCommand: AsyncParsableCommand {
             if let role = byRole, !info.role.lowercased().contains(role.lowercased()) {
                 match = false
             }
-            if let title = byTitle {
-                let isMatch = info.title.range(of: title, options: .caseInsensitive) != nil
-                if !isMatch {
-                    match = false
-                }
+            // --title 只匹配 title 属性
+            if let title = byTitle, !info.title.lowercased().contains(title.lowercased()) {
+                match = false
             }
             if let identifier = byIdentifier, info.identifier?.lowercased().contains(identifier.lowercased()) != true {
                 match = false
+            }
+            // --description 只匹配 description 属性
+            if let description = byDescription, info.description?.lowercased().contains(description.lowercased()) != true {
+                match = false
+            }
+            // --label 模糊匹配：同时匹配 title、value、description
+            if let label = byLabel {
+                let searchLabel = label.lowercased()
+                let infoTitle = info.title.lowercased()
+                let infoValue = info.value?.lowercased() ?? ""
+                let infoDescription = info.description?.lowercased() ?? ""
+                
+                let isMatch = infoTitle.contains(searchLabel) || 
+                             infoValue.contains(searchLabel) || 
+                             infoDescription.contains(searchLabel)
+                if !isMatch {
+                    match = false
+                }
             }
             
             if match {
@@ -158,7 +187,14 @@ struct ElementClickCommand: AsyncParsableCommand {
         
         if childResult == .success, let childArray = children as? [AXUIElement] {
             for child in childArray {
-                let childResults = searchInElement(child, byRole: byRole, byTitle: byTitle, byIdentifier: byIdentifier)
+                let childResults = searchElementsInSheet(
+                    child, 
+                    byRole: byRole, 
+                    byTitle: byTitle, 
+                    byIdentifier: byIdentifier,
+                    byDescription: byDescription,
+                    byLabel: byLabel
+                )
                 results.append(contentsOf: childResults)
             }
         }

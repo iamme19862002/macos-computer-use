@@ -99,6 +99,7 @@ struct AccessibilityManager {
         byTitle: String? = nil,
         byIdentifier: String? = nil,
         byDescription: String? = nil,
+        byLabel: String? = nil,
         inApp: String? = nil
     ) -> [(element: AXUIElement, info: UIElementInfo)] {
         var results: [(AXUIElement, UIElementInfo)] = []
@@ -116,7 +117,8 @@ struct AccessibilityManager {
                 byRole: byRole,
                 byTitle: byTitle,
                 byIdentifier: byIdentifier,
-                byDescription: byDescription
+                byDescription: byDescription,
+                byLabel: byLabel
             )
             results.append(contentsOf: found)
         }
@@ -273,7 +275,8 @@ struct AccessibilityManager {
         byRole: String?,
         byTitle: String?,
         byIdentifier: String?,
-        byDescription: String?
+        byDescription: String?,
+        byLabel: String? = nil
     ) -> [(AXUIElement, UIElementInfo)] {
         var results: [(AXUIElement, UIElementInfo)] = []
         
@@ -283,25 +286,30 @@ struct AccessibilityManager {
             if let role = byRole, !info.role.lowercased().contains(role.lowercased()) {
                 match = false
             }
-            if let title = byTitle {
-                let searchTitle = title.lowercased()
-                // 同时匹配 title、value 和 description，提高查找成功率
-                let infoTitle = info.title.lowercased()
-                let infoValue = info.value?.lowercased() ?? ""
-                let infoDescription = info.description?.lowercased() ?? ""
-                
-                let isMatch = infoTitle.contains(searchTitle) || 
-                             infoValue.contains(searchTitle) || 
-                             infoDescription.contains(searchTitle)
-                if !isMatch {
-                    match = false
-                }
+            // --title 只匹配 title 属性（精确语义）
+            if let title = byTitle, !info.title.lowercased().contains(title.lowercased()) {
+                match = false
             }
             if let identifier = byIdentifier, info.identifier?.lowercased().contains(identifier.lowercased()) != true {
                 match = false
             }
+            // --description 只匹配 description 属性（精确语义）
             if let description = byDescription, info.description?.lowercased().contains(description.lowercased()) != true {
                 match = false
+            }
+            // --label 模糊匹配：同时匹配 title、value、description（用户友好的"标签"搜索）
+            if let label = byLabel {
+                let searchLabel = label.lowercased()
+                let infoTitle = info.title.lowercased()
+                let infoValue = info.value?.lowercased() ?? ""
+                let infoDescription = info.description?.lowercased() ?? ""
+                
+                let isMatch = infoTitle.contains(searchLabel) || 
+                             infoValue.contains(searchLabel) || 
+                             infoDescription.contains(searchLabel)
+                if !isMatch {
+                    match = false
+                }
             }
             
             if match {
@@ -319,7 +327,8 @@ struct AccessibilityManager {
                     byRole: byRole,
                     byTitle: byTitle,
                     byIdentifier: byIdentifier,
-                    byDescription: byDescription
+                    byDescription: byDescription,
+                    byLabel: byLabel
                 )
                 results.append(contentsOf: childResults)
             }
