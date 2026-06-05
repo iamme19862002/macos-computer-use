@@ -237,60 +237,13 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
 
     private func isGoToFolderOpen(appName: String) -> Bool {
         // 检查「前往文件夹」是否已打开
-        // 「前往文件夹」是一个独立的 sheet/dialog，里面包含一个 textfield
-        // 与文件选择器中的文件列表 textfield 不同
+        // 「前往文件夹」在 SwiftUI 应用中是一个独立的 sheet，ID 为 "GoToWindow"
+        // 与文件选择器的 "open-panel" sheet 不同
         
-        // 方法1: 查找独立的 sheet（不是文件选择器的子元素）
         let sheetResults = AccessibilityManager.findElements(byRole: "sheet", inApp: appName)
         for sheet in sheetResults {
-            // 检查这个 sheet 是否是文件选择器的子元素
-            var parentValue: CFTypeRef?
-            let parentResult = AXUIElementCopyAttributeValue(sheet.element, kAXParentAttribute as CFString, &parentValue)
-            
-            // 获取 sheet 的子元素
-            var childrenValue: CFTypeRef?
-            let childrenResult = AXUIElementCopyAttributeValue(sheet.element, kAXChildrenAttribute as CFString, &childrenValue)
-            
-            if childrenResult == .success, let children = childrenValue as? [AXUIElement] {
-                for child in children {
-                    var roleValue: CFTypeRef?
-                    AXUIElementCopyAttributeValue(child, kAXRoleAttribute as CFString, &roleValue)
-                    if let role = roleValue as? String, role == "AXTextField" {
-                        // 检查这个 textfield 是否是「前往文件夹」的输入框
-                        // 「前往文件夹」的输入框通常有特定的特征
-                        var titleValue: CFTypeRef?
-                        AXUIElementCopyAttributeValue(child, kAXTitleAttribute as CFString, &titleValue)
-                        let title = (titleValue as? String) ?? ""
-                        
-                        // 如果 title 为空，可能是「前往文件夹」的输入框
-                        if title.isEmpty {
-                            return true
-                        }
-                    }
-                }
-            }
-        }
-        
-        // 方法2: 查找独立的 dialog
-        let dialogResults = AccessibilityManager.findElements(byRole: "dialog", inApp: appName)
-        for dialog in dialogResults {
-            var childrenValue: CFTypeRef?
-            let childrenResult = AXUIElementCopyAttributeValue(dialog.element, kAXChildrenAttribute as CFString, &childrenValue)
-            
-            if childrenResult == .success, let children = childrenValue as? [AXUIElement] {
-                for child in children {
-                    var roleValue: CFTypeRef?
-                    AXUIElementCopyAttributeValue(child, kAXRoleAttribute as CFString, &roleValue)
-                    if let role = roleValue as? String, role == "AXTextField" {
-                        var titleValue: CFTypeRef?
-                        AXUIElementCopyAttributeValue(child, kAXTitleAttribute as CFString, &titleValue)
-                        let title = (titleValue as? String) ?? ""
-                        
-                        if title.isEmpty {
-                            return true
-                        }
-                    }
-                }
+            if sheet.info.identifier == "GoToWindow" {
+                return true
             }
         }
         
@@ -530,15 +483,24 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
     private func verifyInputValue(appName: String, expectedValue: String) -> Bool {
         // 多次尝试验证，因为输入可能有延迟
         for attempt in 1...3 {
+            // 查找 PathTextField（「前往文件夹」输入框）
             let textFieldResults = AccessibilityManager.findElements(byRole: "textfield", inApp: appName)
-            guard let textField = textFieldResults.first else {
-                printResult(success: false, message: "验证失败：未找到文本输入框（尝试 \(attempt)/3）")
+            var pathTextField: AXUIElement?
+            for result in textFieldResults {
+                if result.info.identifier == "PathTextField" {
+                    pathTextField = result.element
+                    break
+                }
+            }
+            
+            guard let textField = pathTextField else {
+                printResult(success: false, message: "验证失败：未找到「前往文件夹」输入框（尝试 \(attempt)/3）")
                 Thread.sleep(forTimeInterval: 0.2)
                 continue
             }
             
             var value: CFTypeRef?
-            let result = AXUIElementCopyAttributeValue(textField.element, kAXValueAttribute as CFString, &value)
+            let result = AXUIElementCopyAttributeValue(textField, kAXValueAttribute as CFString, &value)
             if result == .success, let stringValue = value as? String {
                 // 允许部分匹配（因为路径可能被截断显示）
                 let normalizedExpected = expectedValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -580,23 +542,34 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
     }
     
     private func inputPathUsingPaste(appName: String, path: String) {
+        // 先聚焦 PathTextField（「前往文件夹」输入框）
+        let textFieldResults = AccessibilityManager.findElements(byRole: "textfield", inApp: appName)
+        for result in textFieldResults {
+            if result.info.identifier == "PathTextField" {
+                _ = AccessibilityManager.setFocus(result.element)
+                Thread.sleep(forTimeInterval: 0.3)
+                break
+            }
+        }
+        
         // 使用剪贴板粘贴路径
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(path, forType: .string)
         
         let escapedAppName = appName.replacingOccurrences(of: "\"", with: "\\\"")
         
-        // 方法: 多次退格清空 + 粘贴
+        // 方法: Cmd+A 全选 + Delete 删除 + 粘贴
         let script = """
         tell application "System Events"
             tell process "\(escapedAppName)"
                 set frontmost to true
                 delay 0.3
-                -- 多次退格清空（100次确保清空）
-                repeat 100 times
-                    key code 51
-                end repeat
-                delay 0.3
+                -- Cmd+A 全选当前内容
+                keystroke "a" using command down
+                delay 0.2
+                -- Delete 删除选中内容
+                key code 51
+                delay 0.2
                 -- 粘贴（Cmd+V）
                 keystroke "v" using command down
                 delay 0.3
@@ -795,15 +768,15 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
         let checkInterval: UInt64 = 300_000_000  // 300ms
         
         while Date().timeIntervalSince(startTime) < Double(timeout) {
-            // 方法1: 使用 AccessibilityManager.findElements 查找文本框（最可靠）
+            // 查找 PathTextField（「前往文件夹」输入框）
             let textFieldResults = AccessibilityManager.findElements(byRole: "textfield", inApp: app)
-            if !textFieldResults.isEmpty {
-                // 找到文本框，确保聚焦
-                if let firstTextField = textFieldResults.first {
-                    _ = AccessibilityManager.clickElement(firstTextField.element)
+            for result in textFieldResults {
+                if result.info.identifier == "PathTextField" {
+                    // 找到「前往文件夹」输入框，确保聚焦
+                    _ = AccessibilityManager.setFocus(result.element)
                     try? await Task.sleep(nanoseconds: 200_000_000)
+                    return true
                 }
-                return true
             }
             
             // 方法2: 检测是否有可编辑的文本框出现
@@ -829,14 +802,13 @@ struct DialogOpenFileCommand: AsyncParsableCommand {
             try? await Task.sleep(nanoseconds: checkInterval)
         }
         
-        // 超时后，如果已经有文本框，也认为是成功的
+        // 超时后，如果已经有 PathTextField，也认为是成功的
         let finalResults = AccessibilityManager.findElements(byRole: "textfield", inApp: app)
-        if !finalResults.isEmpty {
-            // 确保聚焦
-            if let firstTextField = finalResults.first {
-                _ = AccessibilityManager.clickElement(firstTextField.element)
+        for result in finalResults {
+            if result.info.identifier == "PathTextField" {
+                _ = AccessibilityManager.setFocus(result.element)
+                return true
             }
-            return true
         }
         
         return false

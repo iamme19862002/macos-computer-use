@@ -25,6 +25,15 @@
 - 新增 `waitForFileDialog()` 方法，等待文件选择器出现
 - 使用示例：`macos-computer-use dialog-open-file --app "LyricVoice" --button "添加文件" --path "/path/to/file.mp3"`
 
+### 修复
+
+#### 系统对话框操作
+- **修复 `dialog-open-file` 路径缓存不一致问题**
+- 修复 `isGoToFolderOpen` 误判：改为通过 `GoToWindow` sheet ID 精确判断「前往文件夹」是否已打开，避免将文件列表项误判为「前往文件夹」输入框
+- 修复 `verifyInputValue` 读取错误：改为通过 `PathTextField` ID 精确定位「前往文件夹」输入框，避免读取文件列表项导致的路径不匹配
+- 修复 `waitForInputBoxAndFocus` 聚焦错误：改为通过 `PathTextField` ID 定位并聚焦，避免点击文件列表项
+- 修复 `inputPathUsingPaste` 输入位置错误：先聚焦 `PathTextField`，再使用 Cmd+A 全选 + Delete 删除 + 粘贴，确保路径输入到正确的输入框
+
 ### 文档
 - 版本号更新至 3.5.0
 
