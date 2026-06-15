@@ -209,13 +209,65 @@ struct ScreenshotTool {
     }
 
     /// 截取应用的所有窗口（包括主窗口和 Sheet/对话框）
-    /// 使用 screencapture -l 命令，它会自动包含附加到主窗口的 Sheet/对话框
+    /// 当应用有多个窗口时，分别截取每个窗口并合成，避免截到其他应用内容
     private static func captureAppWindows(appName: String) -> CGImage? {
-        // 1. 获取应用的主窗口（最底层的窗口）
         let windows = findAllWindows(forApp: appName)
         guard !windows.isEmpty else { return nil }
         
-        // 找到最底层的窗口（Y 坐标最大 + 高度最大的通常是主窗口）
+        // 1. 如果只有一个窗口，直接截取
+        if windows.count == 1, let windowId = windows.first?.windowId {
+            return captureScreen(windowId: windowId) ?? captureWithScreencapture(windowId: windowId)
+        }
+        
+        // 2. 多个窗口时，分别截取并合成到一张图上
+        guard let unionBounds = unionBounds(windows), !unionBounds.isEmpty else { return nil }
+        
+        let scale = NSScreen.main?.backingScaleFactor ?? 2.0
+        let canvasWidth = Int(unionBounds.width * scale)
+        let canvasHeight = Int(unionBounds.height * scale)
+        
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(
+            data: nil,
+            width: canvasWidth,
+            height: canvasHeight,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        
+        // 设置透明背景
+        context.clear(CGRect(x: 0, y: 0, width: canvasWidth, height: canvasHeight))
+        
+        var anySuccess = false
+        // CGWindowListCopyWindowInfo 返回的窗口按 z-order 从顶到底排序
+        // 从底到顶绘制，确保上层窗口覆盖下层窗口
+        for window in windows.reversed() {
+            guard let windowImage = captureScreen(windowId: window.windowId) else { continue }
+            
+            anySuccess = true
+            let relativeX = (window.bounds.origin.x - unionBounds.origin.x) * scale
+            let relativeY = (window.bounds.origin.y - unionBounds.origin.y) * scale
+            
+            // CGContext 坐标系原点在左下角，需翻转 Y 坐标
+            let drawY = CGFloat(canvasHeight) - relativeY - CGFloat(windowImage.height)
+            
+            let drawRect = CGRect(
+                x: relativeX,
+                y: drawY,
+                width: CGFloat(windowImage.width),
+                height: CGFloat(windowImage.height)
+            )
+            
+            context.draw(windowImage, in: drawRect)
+        }
+        
+        if anySuccess, let result = context.makeImage() {
+            return result
+        }
+        
+        // 3. 回退：使用主窗口 ID 尝试截取（带重试）
         let mainWindow = windows.max { a, b in
             let aBottom = a.bounds.origin.y + a.bounds.height
             let bBottom = b.bounds.origin.y + b.bounds.height
@@ -224,15 +276,12 @@ struct ScreenshotTool {
         
         guard let mainWindowId = mainWindow?.windowId else { return nil }
         
-        // 2. 使用 screencapture -l 截取主窗口及其附加的 Sheet/对话框
-        // 增加重试机制（最多3次），处理窗口状态变化导致的截图失败
         var lastError: String?
         for attempt in 1...3 {
             if let image = captureWithScreencapture(windowId: mainWindowId) {
                 return image
             }
             
-            // 获取更详细的错误信息
             let tmpPath = "/tmp/mcu_retry_\(UUID().uuidString).png"
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
@@ -252,17 +301,8 @@ struct ScreenshotTool {
                 lastError = error.localizedDescription
             }
             
-            // 等待一小段时间让窗口状态稳定
             if attempt < 3 {
                 Thread.sleep(forTimeInterval: 0.5)
-            }
-        }
-        
-        // 3. 如果 screencapture 多次失败，回退到全屏截图+裁剪
-        if let unionBounds = unionBounds(windows), !unionBounds.isEmpty {
-            let region = "\(Int(unionBounds.origin.x)),\(Int(unionBounds.origin.y)),\(Int(unionBounds.width)),\(Int(unionBounds.height))"
-            if let fallbackImage = captureWithScreencapture(region: region) {
-                return fallbackImage
             }
         }
         
