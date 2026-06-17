@@ -51,6 +51,9 @@ Package.resolved
 *.code-workspace
 .history/
 
+# Trae IDE
+.trae/
+
 # JetBrains
 .idea/
 *.iml
