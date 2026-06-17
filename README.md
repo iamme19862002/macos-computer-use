@@ -146,7 +146,7 @@ macos-computer-use middle-click -x 100 -y 200
 macos-computer-use double-click -x 100 -y 200
 
 # 拖拽
-macos-computer-use drag --toX 500 --toY 300
+macos-computer-use drag --to-x 500 --to-y 300
 
 # 滚动
 macos-computer-use scroll -x 500 -y 300 --direction down --amount 500
